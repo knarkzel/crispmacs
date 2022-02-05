@@ -43,18 +43,17 @@ pub enum Atom {
 }
 
 fn parse_built_in(input: &str) -> IResult<&str, Atom> {
-    let (rest, output) =
-        alt((tag("+"), tag("-"), tag("*"), tag("/"), tag("="), tag("not")))(input)?;
-    let built_in = match output {
-        "+" => BuiltIn::Plus,
-        "-" => BuiltIn::Minus,
-        "*" => BuiltIn::Times,
-        "/" => BuiltIn::Divide,
-        "=" => BuiltIn::Equal,
-        "not" => BuiltIn::Not,
-        _ => unreachable!(),
-    };
-    Ok((rest, Atom::BuiltIn(built_in)))
+    map(
+        alt((
+            map(tag("+"), |_| BuiltIn::Plus),
+            map(tag("-"), |_| BuiltIn::Minus),
+            map(tag("*"), |_| BuiltIn::Times),
+            map(tag("/"), |_| BuiltIn::Divide),
+            map(tag("="), |_| BuiltIn::Equal),
+            map(tag("not"), |_| BuiltIn::Not),
+        )),
+        |built_in| Atom::BuiltIn(built_in),
+    )(input)
 }
 
 fn parse_boolean(input: &str) -> IResult<&str, Atom> {
@@ -73,9 +72,11 @@ fn parse_keyword(input: &str) -> IResult<&str, Atom> {
 
 fn parse_number(input: &str) -> IResult<&str, Atom> {
     alt((
-        map_res(digit1, |digits: &str| digits.parse::<i32>().map(Atom::Number)),
-        map(preceded(tag("-"), digit1), |digits: &str| {
-            Atom::Number(-1 * digits.parse::<i32>().unwrap())
+        map_res(digit1, |digits: &str| {
+            digits.parse::<i32>().map(Atom::Number)
+        }),
+        map_res(preceded(tag("-"), digit1), |digits: &str| {
+            digits.parse::<i32>().map(|it| Atom::Number(it * -1))
         }),
     ))(input)
 }
@@ -105,7 +106,7 @@ impl Expr {
             _ => None,
         }
     }
-    
+
     fn boolean(&self) -> Option<bool> {
         match self {
             Expr::Constant(Atom::Boolean(it)) => Some(*it),
@@ -126,27 +127,29 @@ fn parse_application(input: &str) -> IResult<&str, Expr> {
 }
 
 fn parse_if(input: &str) -> IResult<&str, Expr> {
-    let inner = context(
-        "if expression",
+    sexp(context(
+        "if then",
         map(
             preceded(
                 terminated(tag("if"), multispace1),
-                cut(tuple((parse_expr, parse_expr, opt(parse_expr)))),
+                cut(tuple((parse_expr, parse_expr))),
             ),
-            |(pred, true_branch, maybe_false_branch)| {
-                if let Some(false_branch) = maybe_false_branch {
-                    Expr::IfElse(
-                        Box::new(pred),
-                        Box::new(true_branch),
-                        Box::new(false_branch),
-                    )
-                } else {
-                    Expr::If(Box::new(pred), Box::new(true_branch))
-                }
-            },
+            |(predicate, then)| Expr::If(Box::new(predicate), Box::new(then)),
         ),
-    );
-    sexp(inner)(input)
+    ))(input)
+}
+
+fn parse_if_else(input: &str) -> IResult<&str, Expr> {
+    sexp(context(
+        "if then else",
+        map(
+            preceded(
+                terminated(tag("if"), multispace1),
+                cut(tuple((parse_expr, parse_expr, parse_expr))),
+            ),
+            |(predicate, then, otherwise)| Expr::IfElse(Box::new(predicate), Box::new(then), Box::new(otherwise)),
+        ),
+    ))(input)
 }
 
 fn parse_quote(input: &str) -> IResult<&str, Expr> {
@@ -159,7 +162,7 @@ fn parse_quote(input: &str) -> IResult<&str, Expr> {
 fn parse_expr(input: &str) -> IResult<&str, Expr> {
     preceded(
         multispace0,
-        alt((parse_constant, parse_application, parse_if, parse_quote)),
+        alt((parse_constant, parse_application, parse_if_else, parse_if, parse_quote)),
     )(input)
 }
 
