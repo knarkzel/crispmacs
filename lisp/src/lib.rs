@@ -1,5 +1,3 @@
-#![feature(array_windows)]
-
 mod parse;
 mod eval;
 
@@ -11,6 +9,12 @@ pub enum BuiltIn {
     Divide,
     Equal,
     Not,
+    GreaterEqual,
+    Greater,
+    LessEqual,
+    Less,
+    And,
+    Or,
 }
 
 #[derive(Debug, PartialEq, Clone)]

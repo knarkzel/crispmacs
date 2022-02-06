@@ -35,7 +35,13 @@ fn parse_built_in(input: &str) -> IResult<&str, Atom> {
             map(tag("*"), |_| BuiltIn::Times),
             map(tag("/"), |_| BuiltIn::Divide),
             map(tag("="), |_| BuiltIn::Equal),
+            map(tag(">="), |_| BuiltIn::GreaterEqual),
+            map(tag("<="), |_| BuiltIn::LessEqual),
+            map(tag(">"), |_| BuiltIn::Greater),
+            map(tag("<"), |_| BuiltIn::Less),
             map(tag("not"), |_| BuiltIn::Not),
+            map(tag("and"), |_| BuiltIn::And),
+            map(tag("or"), |_| BuiltIn::Or),
         ))
         .context("operator"),
         |built_in| Atom::BuiltIn(built_in),
