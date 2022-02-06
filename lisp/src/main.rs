@@ -2,13 +2,12 @@ use nom::{
     branch::alt,
     character::complete::{alpha1, char, digit1, multispace0, multispace1},
     combinator::{cut, map, map_res},
-    multi::many0,
+    multi::{many0, many1},
     sequence::{delimited, preceded, terminated, tuple},
     Parser,
 };
 use nom_supreme::{
-    error::ErrorTree,
-    tag::complete::tag,
+    error::ErrorTree, final_parser::final_parser, final_parser::ExtractContext, tag::complete::tag,
     ParserExt,
 };
 
@@ -107,22 +106,6 @@ pub enum Expr {
     Quote(Vec<Expr>),
 }
 
-impl Expr {
-    fn number(&self) -> Option<i32> {
-        match self {
-            Expr::Constant(Atom::Number(it)) => Some(*it),
-            _ => None,
-        }
-    }
-
-    fn boolean(&self) -> Option<bool> {
-        match self {
-            Expr::Constant(Atom::Boolean(it)) => Some(*it),
-            _ => None,
-        }
-    }
-}
-
 fn parse_constant(input: &str) -> IResult<&str, Expr> {
     map(parse_atom, |atom| Expr::Constant(atom))(input)
 }
@@ -175,6 +158,59 @@ fn parse_expr(input: &str) -> IResult<&str, Expr> {
     )(input)
 }
 
+fn parse(input: &str) -> Result<Vec<Expr>, ErrorTree<&str>> {
+    final_parser(many1(delimited(multispace0, parse_expr, multispace0)))(input)
+}
+
+// Eval helpers
+fn expr_to_number(expr: Expr) -> Option<i32> {
+    match expr {
+        Expr::Constant(Atom::Number(it)) => Some(it),
+        _ => None,
+    }
+}
+
+fn expr_to_boolean(expr: Expr) -> Option<bool> {
+    match expr {
+        Expr::Constant(Atom::Boolean(it)) => Some(it),
+        _ => None,
+    }
+}
+
+fn number_to_expr(number: i32) -> Option<Expr> {
+    Some(Expr::Constant(Atom::Number(number)))
+}
+
+fn boolean_to_expr(boolean: bool) -> Option<Expr> {
+    Some(Expr::Constant(Atom::Boolean(boolean)))
+}
+
+fn eval(expr: Expr) -> Option<Expr> {
+    match expr {
+        Expr::Constant(_) | Expr::Quote(_) => Some(expr),
+        Expr::Application(head, tail) => {
+            let head = eval(*head)?;
+            let tail = tail.into_iter().map(eval).collect::<Option<Vec<_>>>()?;
+            match head {
+                Expr::Constant(Atom::BuiltIn(BuiltIn::Plus)) => number_to_expr(
+                    tail.into_iter()
+                        .map(expr_to_number)
+                        .collect::<Option<Vec<_>>>()?
+                        .into_iter()
+                        .sum(),
+                ),
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}
+
+fn parse_and_eval(input: &str) -> Result<Vec<Expr>, ErrorTree<&str>> {
+    parse(input).map(|items| items.into_iter().filter_map(eval).collect::<Vec<_>>())
+}
+
 fn main() {
-    dbg!(parse_expr("((^ (= (+ 3 (/ 9 3)) (* 2 3)) * /) 456 123)"));
+    // dbg!(parse("((if (= (+ 3 (/ 9 3)) (* 2 3)) * /) 456 123)"));
+    dbg!(parse_and_eval("(+ 1 2 3)"));
 }
