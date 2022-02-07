@@ -33,7 +33,7 @@ pub enum Atom {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Constant(Atom),
-    /// (func-name arg1 arg2)
+    /// (func-name arg1 arg2 arg3 ...)
     Application(Box<Expr>, Vec<Expr>),
     /// (if predicate do-this)
     If(Box<Expr>, Box<Expr>),
@@ -43,6 +43,8 @@ pub enum Expr {
     Quote(Vec<Expr>),
     /// (define red 123)
     Define(Atom, Box<Expr>),
+    /// (lambda (x y z) (+ x y z))
+    Lambda(Vec<Expr>, Box<Expr>),
 }
 
 pub fn parse_and_eval(input: &str) -> Result<Vec<Expr>, nom_supreme::error::ErrorTree<&str>> {

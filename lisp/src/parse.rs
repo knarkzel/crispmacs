@@ -1,7 +1,7 @@
 use crate::*;
 use nom::{
     branch::alt,
-    character::complete::{alpha1, char, digit1, multispace0, multispace1, alphanumeric1},
+    character::complete::{alpha1, alphanumeric1, char, digit1, multispace0, multispace1},
     combinator::{cut, map, map_res},
     multi::{many0, many1},
     sequence::{delimited, preceded, terminated, tuple},
@@ -21,6 +21,13 @@ where
         preceded(multispace0, inner),
         cut(preceded(multispace0, char(')'))),
     )
+}
+
+fn ws<'a, F: 'a, O>(inner: F) -> impl FnMut(&'a str) -> IResult<&'a str, O>
+where
+    F: Fn(&'a str) -> IResult<&'a str, O>,
+{
+    delimited(multispace0, inner, multispace0)
 }
 
 // Atoms
@@ -62,7 +69,9 @@ fn parse_keyword(input: &str) -> IResult<&str, Atom> {
 }
 
 fn parse_symbol(input: &str) -> IResult<&str, Atom> {
-    map(alphanumeric1, |symbol: &str| Atom::Symbol(symbol.to_string()))(input)
+    map(alphanumeric1, |symbol: &str| {
+        Atom::Symbol(symbol.to_string())
+    })(input)
 }
 
 fn parse_number(input: &str) -> IResult<&str, Atom> {
@@ -79,7 +88,13 @@ fn parse_number(input: &str) -> IResult<&str, Atom> {
 }
 
 fn parse_atom(input: &str) -> IResult<&str, Atom> {
-    alt((parse_number, parse_boolean, parse_built_in, parse_keyword, parse_symbol))(input)
+    alt((
+        parse_number,
+        parse_boolean,
+        parse_built_in,
+        parse_keyword,
+        parse_symbol,
+    ))(input)
 }
 
 fn parse_constant(input: &str) -> IResult<&str, Expr> {
@@ -95,10 +110,7 @@ fn parse_application(input: &str) -> IResult<&str, Expr> {
 
 fn parse_if(input: &str) -> IResult<&str, Expr> {
     sexp(map(
-        preceded(
-            terminated(tag("if"), multispace1),
-            cut(tuple((parse_expr, parse_expr))),
-        ),
+        preceded(ws(tag("if")), cut(tuple((parse_expr, parse_expr)))),
         |(predicate, then)| Expr::If(Box::new(predicate), Box::new(then)),
     ))(input)
 }
@@ -106,7 +118,7 @@ fn parse_if(input: &str) -> IResult<&str, Expr> {
 fn parse_if_else(input: &str) -> IResult<&str, Expr> {
     sexp(map(
         preceded(
-            terminated(tag("if"), multispace1),
+            ws(tag("if")),
             cut(tuple((parse_expr, parse_expr, parse_expr))),
         ),
         |(predicate, then, otherwise)| {
@@ -123,11 +135,23 @@ fn parse_quote(input: &str) -> IResult<&str, Expr> {
 
 fn parse_define(input: &str) -> IResult<&str, Expr> {
     sexp(map(
-        preceded(
-            terminated(tag("define"), multispace1),
-            cut(tuple((parse_symbol, parse_expr))),
-        ),
+        preceded(ws(tag("define")), cut(tuple((parse_symbol, parse_expr)))),
         |(name, expr)| Expr::Define(name, Box::new(expr)),
+    ))(input)
+}
+
+fn parse_lambda(input: &str) -> IResult<&str, Expr> {
+    sexp(map(
+        preceded(
+            ws(tag("lambda")),
+            cut(tuple((sexp(many0(ws(parse_symbol))), parse_expr))),
+        ),
+        |(args, expr)| {
+            Expr::Lambda(
+                args.into_iter().map(|it| Expr::Constant(it)).collect(),
+                Box::new(expr),
+            )
+        },
     ))(input)
 }
 
@@ -138,6 +162,7 @@ fn parse_expr(input: &str) -> IResult<&str, Expr> {
             parse_if_else,
             parse_if,
             parse_define,
+            parse_lambda,
             parse_quote,
             parse_constant,
             parse_application,
