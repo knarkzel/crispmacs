@@ -143,12 +143,11 @@ impl Context {
                                 None
                             }
                         }
-                        _ => None,
                     },
-                    _ => None,
+                    expr => Some(expr),
                 }
             }
-            _ => None,
+            expr => Some(expr),
         }
     }
 }
