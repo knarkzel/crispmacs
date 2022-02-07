@@ -1,6 +1,9 @@
 mod parse;
 mod eval;
 
+pub use parse::parse;
+pub use eval::Context;
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum BuiltIn {
     Plus,
@@ -23,6 +26,7 @@ pub enum Atom {
     Keyword(String),
     Boolean(bool),
     BuiltIn(BuiltIn),
+    Symbol(String),
 }
 
 // Expressions
@@ -37,8 +41,11 @@ pub enum Expr {
     IfElse(Box<Expr>, Box<Expr>, Box<Expr>),
     /// '(3 (if (+ 3 3) 4 5) 7)
     Quote(Vec<Expr>),
+    /// (define red 123)
+    Define(Atom, Box<Expr>),
 }
 
 pub fn parse_and_eval(input: &str) -> Result<Vec<Expr>, nom_supreme::error::ErrorTree<&str>> {
-    parse::parse(input).map(|items| items.into_iter().filter_map(eval::eval).collect::<Vec<_>>())
+    let mut context = eval::Context::default();
+    parse::parse(input).map(|items| items.into_iter().filter_map(|it| context.eval(it)).collect::<Vec<_>>())
 }

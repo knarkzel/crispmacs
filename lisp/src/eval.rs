@@ -1,4 +1,5 @@
 use crate::*;
+use std::collections::HashMap;
 
 // Eval helpers
 fn expr_to_number(expr: &Expr) -> Option<i32> {
@@ -60,43 +61,77 @@ macro_rules! logic {
 	};
 }
 
-pub fn eval(expr: Expr) -> Option<Expr> {
-    match expr {
-        Expr::Constant(_) | Expr::Quote(_) => Some(expr),
-        Expr::Application(head, tail) => {
-            let head = eval(*head)?;
-            let tail = tail.into_iter().map(eval).collect::<Option<Vec<_>>>()?;
-            match head {
-                Expr::Constant(Atom::BuiltIn(built_in)) => match built_in {
-                    BuiltIn::Greater => logic!(tail => a > b),
-                    BuiltIn::Less => logic!(tail => a < b),
-                    BuiltIn::GreaterEqual => logic!(tail => a >= b),
-                    BuiltIn::LessEqual => logic!(tail => a <= b),
-                    BuiltIn::Plus => number_to_expr(numbers(&tail)?.sum()),
-                    BuiltIn::Minus => number_to_expr(numbers(&tail)?.fold(0, |a, b| a - b)),
-                    BuiltIn::Times => number_to_expr(numbers(&tail)?.product()),
-                    BuiltIn::Equal => boolean_to_expr(tail.windows(2).all(|it| it[0] == it[1])),
-                    BuiltIn::And => boolean_to_expr(booleans(&tail)?.all(|it| it)),
-                    BuiltIn::Or => boolean_to_expr(booleans(&tail)?.any(|it| it)),
-                    BuiltIn::Divide => {
-                        if let Some(Some(car)) = car(&tail).map(expr_to_number) {
-                            number_to_expr(numbers(cdr(&tail)?)?.fold(car, |a, b| a / b))
-                        } else {
-                            None
-                        }
-                    }
-                    BuiltIn::Not => {
-                        if tail.len() == 1 {
-                            boolean_to_expr(!expr_to_boolean(car(&tail)?)?)
-                        } else {
-                            None
-                        }
-                    }
-                    _ => None,
-                },
-                _ => None,
+// Context
+#[derive(Default)]
+pub struct Context {
+    variables: HashMap<String, Expr>,
+}
+
+impl Context {
+    pub fn eval(&mut self, expr: Expr) -> Option<Expr> {
+        match expr {
+            Expr::Constant(Atom::Symbol(symbol)) => self.variables.get(&symbol).cloned(),
+            Expr::Define(symbol, expr) => {
+                if let Atom::Symbol(symbol) = symbol {
+                    self.variables.insert(symbol, *expr);
+                }
+                None
             }
+            Expr::Constant(_) | Expr::Quote(_) => Some(expr),
+            Expr::If(predicate, then) => {
+                let predicate = self.eval(*predicate)?;
+                if expr_to_boolean(&predicate)? {
+                    self.eval(*then)
+                } else {
+                    None
+                }
+            }
+            Expr::IfElse(predicate, then, otherwise) => {
+                let predicate = self.eval(*predicate)?;
+                if expr_to_boolean(&predicate)? {
+                    self.eval(*then)
+                } else {
+                    self.eval(*otherwise)
+                }
+            }
+            Expr::Application(head, tail) => {
+                let head = self.eval(*head)?;
+                let tail = tail
+                    .into_iter()
+                    .map(|it| self.eval(it))
+                    .collect::<Option<Vec<_>>>()?;
+                match head {
+                    Expr::Constant(Atom::BuiltIn(built_in)) => match built_in {
+                        BuiltIn::Greater => logic!(tail => a > b),
+                        BuiltIn::Less => logic!(tail => a < b),
+                        BuiltIn::GreaterEqual => logic!(tail => a >= b),
+                        BuiltIn::LessEqual => logic!(tail => a <= b),
+                        BuiltIn::Plus => number_to_expr(numbers(&tail)?.sum()),
+                        BuiltIn::Minus => number_to_expr(numbers(&tail)?.fold(0, |a, b| a - b)),
+                        BuiltIn::Times => number_to_expr(numbers(&tail)?.product()),
+                        BuiltIn::Equal => boolean_to_expr(tail.windows(2).all(|it| it[0] == it[1])),
+                        BuiltIn::And => boolean_to_expr(booleans(&tail)?.all(|it| it)),
+                        BuiltIn::Or => boolean_to_expr(booleans(&tail)?.any(|it| it)),
+                        BuiltIn::Divide => {
+                            if let Some(Some(car)) = car(&tail).map(expr_to_number) {
+                                number_to_expr(numbers(cdr(&tail)?)?.fold(car, |a, b| a / b))
+                            } else {
+                                None
+                            }
+                        }
+                        BuiltIn::Not => {
+                            if tail.len() == 1 {
+                                boolean_to_expr(!expr_to_boolean(car(&tail)?)?)
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    },
+                    _ => None,
+                }
+            }
+            _ => None,
         }
-        _ => None,
     }
 }

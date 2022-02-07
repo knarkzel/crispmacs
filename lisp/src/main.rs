@@ -1,5 +1,3 @@
-use lisp::parse_and_eval;
-
 fn main() {
-    dbg!(parse_and_eval("(or #f #f (= 1 2))"));
+    dbg!(lisp::parse_and_eval("(define sum1 123) (+ sum1 sum1 sum1)"));
 }

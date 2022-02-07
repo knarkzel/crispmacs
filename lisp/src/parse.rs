@@ -1,16 +1,13 @@
 use crate::*;
 use nom::{
     branch::alt,
-    character::complete::{alpha1, char, digit1, multispace0, multispace1},
+    character::complete::{alpha1, char, digit1, multispace0, multispace1, alphanumeric1},
     combinator::{cut, map, map_res},
     multi::{many0, many1},
     sequence::{delimited, preceded, terminated, tuple},
     Parser,
 };
-use nom_supreme::{
-    error::ErrorTree, final_parser::final_parser, tag::complete::tag,
-    ParserExt,
-};
+use nom_supreme::{error::ErrorTree, final_parser::final_parser, tag::complete::tag, ParserExt};
 
 // Helpers
 type IResult<'a, T, U> = nom::IResult<T, U, ErrorTree<&'a str>>;
@@ -64,6 +61,10 @@ fn parse_keyword(input: &str) -> IResult<&str, Atom> {
     )(input)
 }
 
+fn parse_symbol(input: &str) -> IResult<&str, Atom> {
+    map(alphanumeric1, |symbol: &str| Atom::Symbol(symbol.to_string()))(input)
+}
+
 fn parse_number(input: &str) -> IResult<&str, Atom> {
     alt((
         map_res(digit1, |digits: &str| {
@@ -78,7 +79,7 @@ fn parse_number(input: &str) -> IResult<&str, Atom> {
 }
 
 fn parse_atom(input: &str) -> IResult<&str, Atom> {
-    alt((parse_number, parse_boolean, parse_built_in, parse_keyword))(input)
+    alt((parse_number, parse_boolean, parse_built_in, parse_keyword, parse_symbol))(input)
 }
 
 fn parse_constant(input: &str) -> IResult<&str, Expr> {
@@ -120,15 +121,26 @@ fn parse_quote(input: &str) -> IResult<&str, Expr> {
     })(input)
 }
 
+fn parse_define(input: &str) -> IResult<&str, Expr> {
+    sexp(map(
+        preceded(
+            terminated(tag("define"), multispace1),
+            cut(tuple((parse_symbol, parse_expr))),
+        ),
+        |(name, expr)| Expr::Define(name, Box::new(expr)),
+    ))(input)
+}
+
 fn parse_expr(input: &str) -> IResult<&str, Expr> {
     preceded(
         multispace0,
         alt((
-            parse_constant,
-            parse_application,
             parse_if_else,
             parse_if,
+            parse_define,
             parse_quote,
+            parse_constant,
+            parse_application,
         )),
     )(input)
 }
