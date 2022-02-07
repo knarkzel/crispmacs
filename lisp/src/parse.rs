@@ -1,10 +1,10 @@
 use crate::*;
 use nom::{
     branch::alt,
-    character::complete::{alpha1, alphanumeric1, char, digit1, multispace0, multispace1},
+    character::complete::{alpha1, alphanumeric1, char, digit1, multispace0},
     combinator::{cut, map, map_res},
     multi::{many0, many1},
-    sequence::{delimited, preceded, terminated, tuple},
+    sequence::{delimited, preceded, tuple},
     Parser,
 };
 use nom_supreme::{error::ErrorTree, final_parser::final_parser, tag::complete::tag, ParserExt};

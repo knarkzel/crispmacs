@@ -64,19 +64,14 @@ macro_rules! logic {
 // Context
 #[derive(Default)]
 pub struct Context {
-    variables: HashMap<String, Expr>,
+    symbols: HashMap<String, Expr>,
 }
 
 impl Context {
     pub fn eval(&mut self, expr: Expr) -> Option<Expr> {
         match expr {
-            Expr::Constant(Atom::Symbol(symbol)) => self.variables.get(&symbol).cloned(),
-            Expr::Define(symbol, expr) => {
-                if let Atom::Symbol(symbol) = symbol {
-                    self.variables.insert(symbol, *expr);
-                }
-                None
-            }
+            Expr::Constant(Atom::Symbol(symbol)) => self.symbols.get(&symbol).cloned(),
+            Expr::Define(Atom::Symbol(symbol), expr) => self.symbols.insert(symbol, *expr),
             Expr::Constant(_) | Expr::Quote(_) => Some(expr),
             Expr::If(predicate, then) => {
                 let predicate = self.eval(*predicate)?;
@@ -101,6 +96,26 @@ impl Context {
                     .map(|it| self.eval(it))
                     .collect::<Option<Vec<_>>>()?;
                 match head {
+                    Expr::Lambda(args, expr) => {
+                        if args.len() == 0 {
+                            self.eval(*expr)
+                        } else {
+                            let left = car(&args).cloned()?;
+                            let right = car(&tail).cloned()?;
+                            let expr = match *expr {
+                                symbol if symbol == left => Some(right),
+                                Expr::Application(head, tail) => {
+                                    let evaled_tail = tail.into_iter().map(|it| match it {
+                                        symbol if symbol == left => right.clone(),
+                                        it => it,
+                                    }).collect();
+                                    Some(Expr::Application(head, evaled_tail))
+                                }
+                                expr => Some(expr),
+                            };
+                            self.eval(expr?)
+                        }
+                    }
                     Expr::Constant(Atom::BuiltIn(built_in)) => match built_in {
                         BuiltIn::Greater => logic!(tail => a > b),
                         BuiltIn::Less => logic!(tail => a < b),

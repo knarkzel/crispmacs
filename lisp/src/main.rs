@@ -1,3 +1,3 @@
 fn main() {
-    dbg!(lisp::parse("((lambda (x y z) (+ x y z)) 1 2 3)"));
+    dbg!(lisp::parse_and_eval("(define triple (lambda (x y) (+ x x x))) (triple 5)"));
 }
