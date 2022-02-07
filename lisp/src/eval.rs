@@ -100,16 +100,18 @@ impl Context {
                         if args.len() == 0 {
                             self.eval(*expr)
                         } else {
-                            let left = car(&args).cloned()?;
-                            let right = car(&tail).cloned()?;
                             let expr = match *expr {
-                                symbol if symbol == left => Some(right),
-                                Expr::Application(head, tail) => {
-                                    let evaled_tail = tail.into_iter().map(|it| match it {
-                                        symbol if symbol == left => right.clone(),
-                                        it => it,
+                                symbol if let Some(index) = args.iter().position(|it| *it == symbol) => {
+                                    tail.get(index).cloned()
+                                },
+                                Expr::Application(head_expr, tail_expr) => {
+                                    let tail_expr = tail_expr.into_iter().flat_map(|it| match it {
+                                        symbol if let Some(index) = args.iter().position(|it| *it == symbol) => {
+                                            tail.get(index).cloned()
+                                        },
+                                        it => Some(it),
                                     }).collect();
-                                    Some(Expr::Application(head, evaled_tail))
+                                    Some(Expr::Application(head_expr, tail_expr))
                                 }
                                 expr => Some(expr),
                             };
