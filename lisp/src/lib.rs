@@ -49,7 +49,6 @@ pub enum Expr {
     Lambda(Vec<Expr>, Box<Expr>),
 }
 
-pub fn parse_and_eval(input: &str) -> Result<Vec<Expr>, nom_supreme::error::ErrorTree<&str>> {
-    let mut context = eval::Context::default();
+pub fn parse_and_eval<'a>(input: &'a str, context: &mut eval::Context) -> Result<Vec<Expr>, nom_supreme::error::ErrorTree<&'a str>> {
     parse::parse(input).map(|items| items.into_iter().filter_map(|it| context.eval(it)).collect::<Vec<_>>())
 }
