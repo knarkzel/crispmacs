@@ -12,7 +12,9 @@ fn main() {
                 match lisp::parse_and_eval(&line, &mut context) {
                     Ok(expr) => {
                         if expr.len() > 0 {
-                            println!("{:#?}", expr)
+                            for expr in expr {
+                                println!("{}", expr)
+                            }
                         }
                     }
                     Err(e) => println!("Error occurred: {}", e),
