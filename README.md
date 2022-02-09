@@ -4,8 +4,9 @@
 
 ## Crisp
 
-`crisp` is a Lisp that's based on Scheme that looks like Rust. To try out
-the language, clone the project and run the `repl`:
+`crisp` is a Lisp that's based on Scheme that looks like Rust. It is currently
+very bare-bones. To try out the language, clone the project and run the
+repl:
 
 ```bash
 git clone https://github.com/knarkzel/crispmacs
