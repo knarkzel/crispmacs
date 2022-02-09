@@ -2,10 +2,26 @@
 
 `crispmacs` is a WIP implementation of Emacs from scratch in Rust.
 
-## Language
+## Crisp
 
-I'll be implementing a Lisp that looks more like Rust (called `crisp`)
-using [nom](https://docs.rs/nom/7.1.0/nom/index.html).
+`crisp` is a Lisp that's based on Scheme that looks like Rust. To try out
+the language, clone the project and run the `repl`:
+
+```bash
+git clone https://github.com/knarkzel/crispmacs
+cd crispmacs/repl/
+cargo run
+```
+
+### Examples
+
+Recursive functions:
+
+```bash
+>> (let sum (fn (x) (if (> x 0) (+ x (sum (- x 1))) x)))
+>> (sum 10)
+55
+```
 
 ## Editor
 
