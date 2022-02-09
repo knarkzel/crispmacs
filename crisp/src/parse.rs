@@ -54,8 +54,8 @@ fn parse_built_in(input: &str) -> IResult<&str, Atom> {
 
 fn parse_boolean(input: &str) -> IResult<&str, Atom> {
     alt((
-        map(tag("#t"), |_| Atom::Boolean(true)),
-        map(tag("#f"), |_| Atom::Boolean(false)),
+        map(tag("true"), |_| Atom::Boolean(true)),
+        map(tag("false"), |_| Atom::Boolean(false)),
     ))
     .context("boolean")
     .parse(input)
@@ -135,19 +135,19 @@ fn parse_quote(input: &str) -> IResult<&str, Expr> {
 
 fn parse_define(input: &str) -> IResult<&str, Expr> {
     sexp(map(
-        preceded(ws(tag("define")), cut(tuple((parse_symbol, parse_expr)))),
-        |(name, expr)| Expr::Define(name, Box::new(expr)),
+        preceded(ws(tag("let")), cut(tuple((parse_symbol, parse_expr)))),
+        |(name, expr)| Expr::Let(name, Box::new(expr)),
     ))(input)
 }
 
 fn parse_lambda(input: &str) -> IResult<&str, Expr> {
     sexp(map(
         preceded(
-            ws(tag("lambda")),
+            ws(tag("fn")),
             cut(tuple((sexp(many0(ws(parse_symbol))), parse_expr))),
         ),
         |(args, expr)| {
-            Expr::Lambda(
+            Expr::Function(
                 args.into_iter().map(|it| Expr::Constant(it)).collect(),
                 Box::new(expr),
             )

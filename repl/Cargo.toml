@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-lisp = { path = "../lisp" }
+crisp = { path = "../crisp" }
 rustyline = "9.1.2"

@@ -93,7 +93,7 @@ impl Context {
         match expr {
             Expr::Constant(Atom::Symbol(symbol)) => self.symbols.get(&symbol).cloned(),
             Expr::Constant(_) | Expr::Quote(_) => Some(expr),
-            Expr::Define(Atom::Symbol(symbol), expr) => {
+            Expr::Let(Atom::Symbol(symbol), expr) => {
                 let expr = self.eval(*expr);
                 self.symbols.insert(symbol, expr?);
                 None
@@ -121,7 +121,7 @@ impl Context {
                     .map(|it| self.eval(it))
                     .collect::<Option<Vec<_>>>()?;
                 match head {
-                    Expr::Lambda(args, expr) => {
+                    Expr::Function(args, expr) => {
                         let mut marked = (0..args.len()).map(|_| false).collect::<Vec<_>>();
                         let expr = curry(*expr, &args, &tail, &mut marked)?;
                         let args = args
@@ -131,7 +131,7 @@ impl Context {
                             .collect::<Vec<_>>();
                         match args.len() == 0 {
                             true => self.eval(expr),
-                            false => Some(Expr::Lambda(args, Box::new(expr))),
+                            false => Some(Expr::Function(args, Box::new(expr))),
                         }
                     }
                     Expr::Constant(Atom::BuiltIn(built_in)) => match built_in {

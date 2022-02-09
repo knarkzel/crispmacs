@@ -81,10 +81,10 @@ pub enum Expr {
     IfElse(Box<Expr>, Box<Expr>, Box<Expr>),
     /// '(3 (if (+ 3 3) 4 5) 7)
     Quote(Vec<Expr>),
-    /// (define red 123)
-    Define(Atom, Box<Expr>),
-    /// (lambda (x y z) (+ x y z))
-    Lambda(Vec<Expr>, Box<Expr>),
+    /// (let red 123)
+    Let(Atom, Box<Expr>),
+    /// (fn (x y z) (+ x y z))
+    Function(Vec<Expr>, Box<Expr>),
 }
 
 impl Display for Expr {
@@ -114,9 +114,9 @@ impl Display for Expr {
                 }
                 write!(f, ")")
             }
-            Self::Define(name, body) => write!(f, "(define {} {})", name, body),
-            Self::Lambda(args, body) => {
-                write!(f, "(lambda (")?;
+            Self::Let(name, body) => write!(f, "(let {} {})", name, body),
+            Self::Function(args, body) => {
+                write!(f, "(fn (")?;
                 for (i, expr) in args.iter().enumerate() {
                     if i > 0 {
                         write!(f, " ")?;

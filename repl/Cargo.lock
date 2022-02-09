@@ -53,6 +53,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "crisp"
+version = "0.1.0"
+dependencies = [
+ "nom",
+ "nom-supreme",
+]
+
+[[package]]
 name = "dirs-next"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -166,14 +174,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95f5690fef754d905294c56f7ac815836f2513af966aa47f2e07ac79be07827f"
 
 [[package]]
-name = "lisp"
-version = "0.1.0"
-dependencies = [
- "nom",
- "nom-supreme",
-]
-
-[[package]]
 name = "log"
 version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -282,7 +282,7 @@ dependencies = [
 name = "repl"
 version = "0.1.0"
 dependencies = [
- "lisp",
+ "crisp",
  "rustyline",
 ]
 
