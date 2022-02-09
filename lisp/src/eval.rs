@@ -49,6 +49,27 @@ fn cdr<T>(tail: &[T]) -> Option<&[T]> {
     }
 }
 
+// Curry lambda by recursively translating each variable into its parameter
+fn curry(expr: Expr, left: &[Expr], right: &[Expr], marked: &mut [bool]) -> Option<Expr> {
+    let mut single = |expr| -> Option<Expr> { Some(curry(expr, left, right, marked)?) };
+    match expr {
+        // Handle variable
+        symbol if let Some(index) = left.iter().position(|it| *it == symbol) => {
+            marked[index] = true;
+            right.get(index).cloned()
+        },
+        // Handle other forms
+        Expr::Application(head, tail) => {
+            let head = Box::new(single(*head)?);
+            let tail = tail.into_iter().map(single).collect::<Option<Vec<_>>>()?;
+            Some(Expr::Application(head, tail))
+        },
+        Expr::If(predicate, then) => Some(Expr::If(Box::new(single(*predicate)?), Box::new(single(*then)?))),
+        Expr::IfElse(predicate, then, otherwise) => Some(Expr::IfElse(Box::new(single(*predicate)?), Box::new(single(*then)?), Box::new(single(*otherwise)?))),
+        it => Some(it),
+    }
+}
+
 // Macros
 macro_rules! logic {
 	($tail:ident => $a:ident $op:tt $b:ident) => {
@@ -71,8 +92,12 @@ impl Context {
     pub fn eval(&mut self, expr: Expr) -> Option<Expr> {
         match expr {
             Expr::Constant(Atom::Symbol(symbol)) => self.symbols.get(&symbol).cloned(),
-            Expr::Define(Atom::Symbol(symbol), expr) => self.symbols.insert(symbol, *expr),
             Expr::Constant(_) | Expr::Quote(_) => Some(expr),
+            Expr::Define(Atom::Symbol(symbol), expr) => {
+                let expr = self.eval(*expr);
+                self.symbols.insert(symbol, expr?);
+                None
+            }
             Expr::If(predicate, then) => {
                 let predicate = self.eval(*predicate)?;
                 if expr_to_boolean(&predicate)? {
@@ -97,25 +122,16 @@ impl Context {
                     .collect::<Option<Vec<_>>>()?;
                 match head {
                     Expr::Lambda(args, expr) => {
-                        if args.len() == 0 {
-                            self.eval(*expr)
-                        } else {
-                            let expr = match *expr {
-                                symbol if let Some(index) = args.iter().position(|it| *it == symbol) => {
-                                    tail.get(index).cloned()
-                                },
-                                Expr::Application(head_expr, tail_expr) => {
-                                    let tail_expr = tail_expr.into_iter().flat_map(|it| match it {
-                                        symbol if let Some(index) = args.iter().position(|it| *it == symbol) => {
-                                            tail.get(index).cloned()
-                                        },
-                                        it => Some(it),
-                                    }).collect();
-                                    Some(Expr::Application(head_expr, tail_expr))
-                                }
-                                expr => Some(expr),
-                            };
-                            self.eval(expr?)
+                        let mut marked = (0..args.len()).map(|_| false).collect::<Vec<_>>();
+                        let expr = curry(*expr, &args, &tail, &mut marked)?;
+                        let args = args
+                            .into_iter()
+                            .zip(marked.into_iter())
+                            .filter_map(|(it, marked)| if marked { None } else { Some(it) })
+                            .collect::<Vec<_>>();
+                        match args.len() == 0 {
+                            true => self.eval(expr),
+                            false => Some(Expr::Lambda(args, Box::new(expr))),
                         }
                     }
                     Expr::Constant(Atom::BuiltIn(built_in)) => match built_in {
@@ -124,7 +140,13 @@ impl Context {
                         BuiltIn::GreaterEqual => logic!(tail => a >= b),
                         BuiltIn::LessEqual => logic!(tail => a <= b),
                         BuiltIn::Plus => number_to_expr(numbers(&tail)?.sum()),
-                        BuiltIn::Minus => number_to_expr(numbers(&tail)?.fold(0, |a, b| a - b)),
+                        BuiltIn::Minus => {
+                            if let Some(Some(car)) = car(&tail).map(expr_to_number) {
+                                number_to_expr(numbers(cdr(&tail)?)?.fold(car, |a, b| a - b))
+                            } else {
+                                None
+                            }
+                        }
                         BuiltIn::Times => number_to_expr(numbers(&tail)?.product()),
                         BuiltIn::Equal => boolean_to_expr(tail.windows(2).all(|it| it[0] == it[1])),
                         BuiltIn::And => boolean_to_expr(booleans(&tail)?.all(|it| it)),
@@ -144,10 +166,10 @@ impl Context {
                             }
                         }
                     },
-                    expr => Some(expr),
+                    it => Some(it),
                 }
             }
-            expr => Some(expr),
+            it => Some(it),
         }
     }
 }

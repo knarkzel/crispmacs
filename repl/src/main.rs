@@ -1,5 +1,5 @@
-use rustyline::error::ReadlineError;
 use rustyline::Editor;
+use rustyline::error::ReadlineError;
 
 fn main() {
     let mut rl = Editor::<()>::new();
