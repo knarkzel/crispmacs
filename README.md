@@ -17,7 +17,7 @@ cargo run
 
 Recursive functions:
 
-```bash
+```lisp
 >> (let sum (fn (x) (if (> x 0) (+ x (sum (- x 1))) x)))
 >> (sum 10)
 55
