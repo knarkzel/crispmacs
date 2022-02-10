@@ -6,6 +6,9 @@ mod parse;
 pub use eval::Context;
 pub use parse::parse;
 use std::fmt::Display;
+use fehler::throws;
+use anyhow::bail;
+pub type Error = anyhow::Error;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum BuiltIn {
@@ -126,6 +129,7 @@ impl Display for Expr {
     }
 }
 
+// Collect all errors using https://github.com/tarquin-the-brave/beau-collector/
 pub fn parse_and_eval<'a>(
     input: &'a str,
     context: &mut eval::Context,
@@ -133,7 +137,7 @@ pub fn parse_and_eval<'a>(
     parse::parse(input).map(|items| {
         items
             .into_iter()
-            .filter_map(|it| context.eval(it))
+            .flat_map(|it| context.eval(it))
             .collect::<Vec<_>>()
     })
 }
