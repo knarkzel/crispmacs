@@ -11,21 +11,22 @@ fn main() {
                 rl.add_history_entry(line.as_str());
                 // dbg!(crisp::parse(&line));
                 match crisp::parse_and_eval(&line, &mut context) {
-                    Ok(expr) => {
+                    Ok(Ok(expr)) => {
                         if expr.len() > 0 {
                             for expr in expr {
                                 println!("{}", expr)
                             }
                         }
                     }
-                    Err(e) => println!("Error occurred: {}", e),
+                    Ok(Err(e)) => println!("Evaluation error: {}", e),
+                    Err(e) => println!("Parsing error: {}", e),
                 }
             }
             Err(ReadlineError::Interrupted | ReadlineError::Eof) => {
                 break;
             }
             Err(err) => {
-                println!("Error: {:?}", err);
+                println!("Readline error: {:?}", err);
                 break;
             }
         }

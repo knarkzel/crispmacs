@@ -148,7 +148,7 @@ impl Context {
                             Some(Ok(car)) => {
                                 number_to_expr(numbers(cdr(&tail).unwrap_or_default())?.fold(car, |a, b| a - b))
                             }
-                            _ => bail!("No car found for minus"),
+                            _ => bail!("- expects one or more parameters, found {}", tail.len()),
                         },
                         BuiltIn::Times => number_to_expr(numbers(&tail)?.product()),
                         BuiltIn::Equal => boolean_to_expr(tail.windows(2).all(|it| it[0] == it[1])),
@@ -161,11 +161,11 @@ impl Context {
                             Some(Ok(car)) => {
                                 number_to_expr(numbers(cdr(&tail).unwrap_or_default())?.fold(car, |a, b| a / b))
                             }
-                            _ => bail!("No car found for divide"),
+                            _ => bail!("/ expects 1 or more parameters, found {}", tail.len()),
                         },
                         BuiltIn::Not => match (tail.len() == 1, car(&tail)) {
                             (true, Some(car)) => boolean_to_expr(!expr_to_boolean(car)?),
-                            _ => bail!("! expects 1 parameter only"),
+                            _ => bail!("! expects 1 parameter, got {}", tail.len()),
                         },
                     }),
                     it => Ok(it),

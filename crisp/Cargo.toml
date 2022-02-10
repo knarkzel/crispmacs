@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.53"
+beau_collector = "0.2.1"
 fehler = "1.0.0"
 nom = "7.1.0"
 nom-supreme = "0.6.0"

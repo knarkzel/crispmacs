@@ -3,12 +3,13 @@
 mod eval;
 mod parse;
 
+use anyhow::bail;
 pub use eval::Context;
+use fehler::throws;
 pub use parse::parse;
 use std::fmt::Display;
-use fehler::throws;
-use anyhow::bail;
-pub type Error = anyhow::Error;
+type Error = anyhow::Error;
+use beau_collector::BeauCollector as _;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum BuiltIn {
@@ -133,11 +134,11 @@ impl Display for Expr {
 pub fn parse_and_eval<'a>(
     input: &'a str,
     context: &mut eval::Context,
-) -> Result<Vec<Expr>, nom_supreme::error::ErrorTree<&'a str>> {
+) -> Result<Result<Vec<Expr>, anyhow::Error>, nom_supreme::error::ErrorTree<&'a str>> {
     parse::parse(input).map(|items| {
         items
             .into_iter()
-            .flat_map(|it| context.eval(it))
-            .collect::<Vec<_>>()
+            .map(|it| context.eval(it))
+            .bcollect::<Vec<_>>()
     })
 }
