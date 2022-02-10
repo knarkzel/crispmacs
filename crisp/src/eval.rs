@@ -106,7 +106,7 @@ impl Context {
             Expr::Let(Atom::Symbol(symbol), expr) => {
                 let expr = self.eval(*expr)?;
                 self.symbols.insert(symbol.clone(), expr);
-                bail!("Declared variable: {symbol}")
+                Ok(Expr::Nil)
             }
             Expr::If(predicate, then, otherwise) => {
                 let predicate = self.eval(*predicate)?;

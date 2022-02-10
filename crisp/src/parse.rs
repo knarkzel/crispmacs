@@ -1,7 +1,8 @@
 use crate::*;
 use nom::{
     branch::alt,
-    character::complete::{alpha1, alphanumeric1, char, digit1, multispace0},
+    bytes::complete::{escaped, take_until},
+    character::complete::{alpha1, alphanumeric1, char, digit1, multispace0, one_of},
     combinator::{cut, map, map_res, opt},
     multi::{many0, many1},
     sequence::{delimited, preceded, tuple},
@@ -95,8 +96,26 @@ fn parse_number(input: &str) -> IResult<&str, Atom> {
     .parse(input)
 }
 
+fn parse_string(input: &str) -> IResult<&str, Atom> {
+    map(
+        delimited(
+            tag("\""),
+            take_until("\""),
+            // escaped(
+                // alt((take_until("\""), take_until("\\"))),
+                // '\\',
+                // one_of("\"\\"),
+            // ),
+            tag("\""),
+        ),
+        |it: &str| Atom::String(it.to_string()),
+    )
+    .parse(input)
+}
+
 fn parse_atom(input: &str) -> IResult<&str, Atom> {
     alt((
+        parse_string,
         parse_number,
         parse_boolean,
         parse_built_in,

@@ -55,6 +55,7 @@ pub enum Atom {
     Boolean(bool),
     BuiltIn(BuiltIn),
     Symbol(String),
+    String(String),
 }
 
 impl Display for Atom {
@@ -71,6 +72,7 @@ impl Display for Atom {
             }
             Self::BuiltIn(built_in) => write!(f, "{}", built_in),
             Self::Symbol(symbol) => write!(f, "{}", symbol),
+            Self::String(string) => write!(f, "\"{}\"", string),
         }
     }
 }
@@ -89,6 +91,8 @@ pub enum Expr {
     Let(Atom, Box<Expr>),
     /// (fn (x y z) (+ x y z))
     Function(Vec<Expr>, Box<Expr>),
+    /// nil
+    Nil,
 }
 
 impl Display for Expr {
@@ -126,6 +130,7 @@ impl Display for Expr {
                 }
                 write!(f, ") {})", body)
             }
+            Self::Nil => write!(f, "nil"),
         }
     }
 }
