@@ -59,13 +59,12 @@ fn curry(expr: Expr, left: &[Expr], right: &[Expr], marked: &mut [bool]) -> Opti
             right.get(index).cloned()
         },
         // Handle other forms
-        Expr::Application(head, tail) => {
+        Expr::Call(head, tail) => {
             let head = Box::new(single(*head)?);
             let tail = tail.into_iter().map(single).collect::<Option<Vec<_>>>()?;
-            Some(Expr::Application(head, tail))
+            Some(Expr::Call(head, tail))
         },
-        Expr::If(predicate, then) => Some(Expr::If(Box::new(single(*predicate)?), Box::new(single(*then)?))),
-        Expr::IfElse(predicate, then, otherwise) => Some(Expr::IfElse(Box::new(single(*predicate)?), Box::new(single(*then)?), Box::new(single(*otherwise)?))),
+        Expr::If(predicate, then, otherwise) => Some(Expr::If(Box::new(single(*predicate)?), Box::new(single(*then)?), otherwise.and_then(|it| single(*it).map(Box::new)))),
         it => Some(it),
     }
 }
@@ -98,23 +97,17 @@ impl Context {
                 self.symbols.insert(symbol, expr?);
                 None
             }
-            Expr::If(predicate, then) => {
+            Expr::If(predicate, then, otherwise) => {
                 let predicate = self.eval(*predicate)?;
                 if expr_to_boolean(&predicate)? {
                     self.eval(*then)
+                } else if let Some(branch) = otherwise {
+                    self.eval(*branch)
                 } else {
                     None
                 }
             }
-            Expr::IfElse(predicate, then, otherwise) => {
-                let predicate = self.eval(*predicate)?;
-                if expr_to_boolean(&predicate)? {
-                    self.eval(*then)
-                } else {
-                    self.eval(*otherwise)
-                }
-            }
-            Expr::Application(head, tail) => {
+            Expr::Call(head, tail) => {
                 let head = self.eval(*head)?;
                 let tail = tail
                     .into_iter()
@@ -140,31 +133,29 @@ impl Context {
                         BuiltIn::GreaterEqual => logic!(tail => a >= b),
                         BuiltIn::LessEqual => logic!(tail => a <= b),
                         BuiltIn::Plus => number_to_expr(numbers(&tail)?.sum()),
-                        BuiltIn::Minus => {
-                            if let Some(Some(car)) = car(&tail).map(expr_to_number) {
+                        BuiltIn::Minus => match car(&tail).map(expr_to_number) {
+                            Some(Some(car)) => {
                                 number_to_expr(numbers(cdr(&tail)?)?.fold(car, |a, b| a - b))
-                            } else {
-                                None
                             }
-                        }
+                            _ => None,
+                        },
                         BuiltIn::Times => number_to_expr(numbers(&tail)?.product()),
                         BuiltIn::Equal => boolean_to_expr(tail.windows(2).all(|it| it[0] == it[1])),
+                        BuiltIn::NotEqual => {
+                            boolean_to_expr(tail.windows(2).all(|it| it[0] != it[1]))
+                        }
                         BuiltIn::And => boolean_to_expr(booleans(&tail)?.all(|it| it)),
                         BuiltIn::Or => boolean_to_expr(booleans(&tail)?.any(|it| it)),
-                        BuiltIn::Divide => {
-                            if let Some(Some(car)) = car(&tail).map(expr_to_number) {
+                        BuiltIn::Divide => match car(&tail).map(expr_to_number) {
+                            Some(Some(car)) => {
                                 number_to_expr(numbers(cdr(&tail)?)?.fold(car, |a, b| a / b))
-                            } else {
-                                None
                             }
-                        }
-                        BuiltIn::Not => {
-                            if tail.len() == 1 {
-                                boolean_to_expr(!expr_to_boolean(car(&tail)?)?)
-                            } else {
-                                None
-                            }
-                        }
+                            _ => None,
+                        },
+                        BuiltIn::Not => match tail.len() == 1 {
+                            true => boolean_to_expr(!expr_to_boolean(car(&tail)?)?),
+                            false => None,
+                        },
                     },
                     it => Some(it),
                 }

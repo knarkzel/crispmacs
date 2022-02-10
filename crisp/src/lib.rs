@@ -14,6 +14,7 @@ pub enum BuiltIn {
     Times,
     Divide,
     Equal,
+    NotEqual,
     Not,
     GreaterEqual,
     Greater,
@@ -31,13 +32,14 @@ impl Display for BuiltIn {
             Self::Times => write!(f, "*"),
             Self::Divide => write!(f, "/"),
             Self::Equal => write!(f, "="),
-            Self::Not => write!(f, "not"),
+            Self::NotEqual => write!(f, "!="),
+            Self::Not => write!(f, "!"),
             Self::GreaterEqual => write!(f, ">="),
             Self::Greater => write!(f, ">"),
             Self::LessEqual => write!(f, "<="),
             Self::Less => write!(f, "<"),
-            Self::And => write!(f, "and"),
-            Self::Or => write!(f, "or"),
+            Self::And => write!(f, "&&"),
+            Self::Or => write!(f, "||"),
         }
     }
 }
@@ -58,9 +60,9 @@ impl Display for Atom {
             Self::Keyword(keyword) => write!(f, ":{}", keyword),
             Self::Boolean(boolean) => {
                 if *boolean {
-                    write!(f, "#t")
+                    write!(f, "true")
                 } else {
-                    write!(f, "#f")
+                    write!(f, "false")
                 }
             }
             Self::BuiltIn(built_in) => write!(f, "{}", built_in),
@@ -74,11 +76,9 @@ impl Display for Atom {
 pub enum Expr {
     Constant(Atom),
     /// (func-name arg1 arg2 arg3 ...)
-    Application(Box<Expr>, Vec<Expr>),
-    /// (if predicate do-this)
-    If(Box<Expr>, Box<Expr>),
-    /// (if predicate do-this otherwise-do-this)
-    IfElse(Box<Expr>, Box<Expr>, Box<Expr>),
+    Call(Box<Expr>, Vec<Expr>),
+    /// (if predicate then otherwise)
+    If(Box<Expr>, Box<Expr>, Option<Box<Expr>>),
     /// '(3 (if (+ 3 3) 4 5) 7)
     Quote(Vec<Expr>),
     /// (let red 123)
@@ -91,21 +91,18 @@ impl Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Constant(atom) => write!(f, "{}", atom),
-            Self::Application(head, tail) => {
+            Self::Call(head, tail) => {
                 write!(f, "({}", head)?;
                 for expr in tail {
                     write!(f, " {}", expr)?;
                 }
                 write!(f, ")")
             }
-            Self::If(predicate, then) => {
-                write!(f, "(if {} {})", predicate, then)
-            }
-            Self::IfElse(predicate, then, otherwise) => {
-                write!(f, "(if {} {} {})", predicate, then, otherwise)
+            Self::If(predicate, then, otherwise) => {
+                write!(f, "(if {} {} {:?})", predicate, then, otherwise)
             }
             Self::Quote(expr) => {
-                write!(f, "'(")?;
+                write!(f, "(")?;
                 for (i, expr) in expr.iter().enumerate() {
                     if i > 0 {
                         write!(f, " ")?;

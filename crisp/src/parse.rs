@@ -2,7 +2,7 @@ use crate::*;
 use nom::{
     branch::alt,
     character::complete::{alpha1, alphanumeric1, char, digit1, multispace0},
-    combinator::{cut, map, map_res},
+    combinator::{cut, map, map_res, opt},
     multi::{many0, many1},
     sequence::{delimited, preceded, tuple},
     Parser,
@@ -30,6 +30,13 @@ where
     delimited(multispace0, inner, multispace0)
 }
 
+fn lambda(args: Vec<Atom>, expr: Expr) -> Expr {
+    Expr::Function(
+        args.into_iter().map(Expr::Constant).collect(),
+        Box::new(expr),
+    )
+}
+
 // Atoms
 fn parse_built_in(input: &str) -> IResult<&str, Atom> {
     map(
@@ -39,13 +46,14 @@ fn parse_built_in(input: &str) -> IResult<&str, Atom> {
             map(tag("*"), |_| BuiltIn::Times),
             map(tag("/"), |_| BuiltIn::Divide),
             map(tag("="), |_| BuiltIn::Equal),
+            map(tag("!="), |_| BuiltIn::NotEqual),
             map(tag(">="), |_| BuiltIn::GreaterEqual),
             map(tag("<="), |_| BuiltIn::LessEqual),
             map(tag(">"), |_| BuiltIn::Greater),
             map(tag("<"), |_| BuiltIn::Less),
-            map(tag("not"), |_| BuiltIn::Not),
-            map(tag("and"), |_| BuiltIn::And),
-            map(tag("or"), |_| BuiltIn::Or),
+            map(tag("!"), |_| BuiltIn::Not),
+            map(tag("&&"), |_| BuiltIn::And),
+            map(tag("||"), |_| BuiltIn::Or),
         ))
         .context("operator"),
         |built_in| Atom::BuiltIn(built_in),
@@ -101,28 +109,21 @@ fn parse_constant(input: &str) -> IResult<&str, Expr> {
     map(parse_atom, |atom| Expr::Constant(atom))(input)
 }
 
-fn parse_application(input: &str) -> IResult<&str, Expr> {
+fn parse_call(input: &str) -> IResult<&str, Expr> {
     let inner = map(tuple((parse_expr, many0(parse_expr))), |(head, tail)| {
-        Expr::Application(Box::new(head), tail)
+        Expr::Call(Box::new(head), tail)
     });
     sexp(inner)(input)
 }
 
 fn parse_if(input: &str) -> IResult<&str, Expr> {
     sexp(map(
-        preceded(ws(tag("if")), cut(tuple((parse_expr, parse_expr)))),
-        |(predicate, then)| Expr::If(Box::new(predicate), Box::new(then)),
-    ))(input)
-}
-
-fn parse_if_else(input: &str) -> IResult<&str, Expr> {
-    sexp(map(
         preceded(
             ws(tag("if")),
-            cut(tuple((parse_expr, parse_expr, parse_expr))),
+            cut(tuple((parse_expr, parse_expr, opt(parse_expr)))),
         ),
         |(predicate, then, otherwise)| {
-            Expr::IfElse(Box::new(predicate), Box::new(then), Box::new(otherwise))
+            Expr::If(Box::new(predicate), Box::new(then), otherwise.map(Box::new))
         },
     ))(input)
 }
@@ -133,25 +134,31 @@ fn parse_quote(input: &str) -> IResult<&str, Expr> {
     })(input)
 }
 
-fn parse_define(input: &str) -> IResult<&str, Expr> {
-    sexp(map(
-        preceded(ws(tag("let")), cut(tuple((parse_symbol, parse_expr)))),
-        |(name, expr)| Expr::Let(name, Box::new(expr)),
-    ))(input)
+fn parse_let(input: &str) -> IResult<&str, Expr> {
+    let define = sexp(map(
+        preceded(ws(tag("let")), tuple((parse_symbol, parse_expr))),
+        |(name, body)| Expr::Let(name, Box::new(body)),
+    ));
+    let lambda = sexp(map(
+        preceded(
+            ws(tag("let")),
+            tuple((
+                sexp(tuple((ws(parse_symbol), many0(ws(parse_symbol))))),
+                parse_expr,
+            )),
+        ),
+        |((name, args), body)| Expr::Let(name, Box::new(lambda(args, body))),
+    ));
+    alt((lambda, define))(input)
 }
 
-fn parse_lambda(input: &str) -> IResult<&str, Expr> {
+fn parse_function(input: &str) -> IResult<&str, Expr> {
     sexp(map(
         preceded(
             ws(tag("fn")),
             cut(tuple((sexp(many0(ws(parse_symbol))), parse_expr))),
         ),
-        |(args, expr)| {
-            Expr::Function(
-                args.into_iter().map(|it| Expr::Constant(it)).collect(),
-                Box::new(expr),
-            )
-        },
+        |(args, body)| lambda(args, body),
     ))(input)
 }
 
@@ -159,13 +166,12 @@ fn parse_expr(input: &str) -> IResult<&str, Expr> {
     preceded(
         multispace0,
         alt((
-            parse_if_else,
             parse_if,
-            parse_define,
-            parse_lambda,
+            parse_let,
+            parse_function,
             parse_quote,
             parse_constant,
-            parse_application,
+            parse_call,
         )),
     )(input)
 }

@@ -9,6 +9,7 @@ fn main() {
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
+                // dbg!(crisp::parse(&line));
                 match crisp::parse_and_eval(&line, &mut context) {
                     Ok(expr) => {
                         if expr.len() > 0 {
