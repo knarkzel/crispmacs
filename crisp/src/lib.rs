@@ -5,10 +5,10 @@ mod parse;
 
 use anyhow::bail;
 pub use eval::Context;
-use fehler::throws;
+pub use fehler::throws;
 pub use parse::parse;
 use std::fmt::Display;
-type Error = anyhow::Error;
+pub type Error = anyhow::Error;
 use beau_collector::BeauCollector as _;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -56,6 +56,7 @@ pub enum Atom {
     BuiltIn(BuiltIn),
     Symbol(String),
     String(String),
+    Char(char),
 }
 
 impl Display for Atom {
@@ -73,6 +74,7 @@ impl Display for Atom {
             Self::BuiltIn(built_in) => write!(f, "{}", built_in),
             Self::Symbol(symbol) => write!(f, "{}", symbol),
             Self::String(string) => write!(f, "\"{}\"", string),
+            Self::Char(letter) => write!(f, "'{}'", letter),
         }
     }
 }
@@ -88,7 +90,7 @@ pub enum Expr {
     /// '(3 (if (+ 3 3) 4 5) 7)
     Quote(Vec<Expr>),
     /// (let red 123)
-    Let(Atom, Box<Expr>),
+    Let(Vec<(Atom, Box<Expr>)>),
     /// (fn (x y z) (+ x y z))
     Function(Vec<Expr>, Box<Expr>),
     /// nil
@@ -109,17 +111,30 @@ impl Display for Expr {
             Self::If(predicate, then, otherwise) => {
                 write!(f, "(if {} {} {:?})", predicate, then, otherwise)
             }
-            Self::Quote(expr) => {
-                write!(f, "(")?;
-                for (i, expr) in expr.iter().enumerate() {
+            Self::Quote(expr) => match expr.len() {
+                0 => write!(f, ""),
+                1 => write!(f, "{}", expr[0]),
+                _ => {
+                    write!(f, "(")?;
+                    for (i, expr) in expr.iter().enumerate() {
+                        if i > 0 {
+                            write!(f, " ")?;
+                        }
+                        write!(f, "{}", expr)?;
+                    }
+                    write!(f, ")")
+                }
+            },
+            Self::Let(items) => {
+                write!(f, "(let ")?;
+                for (i, item) in items.iter().enumerate() {
                     if i > 0 {
                         write!(f, " ")?;
                     }
-                    write!(f, "{}", expr)?;
+                    write!(f, "{} {}", item.0, item.1)?;
                 }
                 write!(f, ")")
             }
-            Self::Let(name, body) => write!(f, "(let {} {})", name, body),
             Self::Function(args, body) => {
                 write!(f, "(fn (")?;
                 for (i, expr) in args.iter().enumerate() {

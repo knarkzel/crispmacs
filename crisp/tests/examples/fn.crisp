@@ -1,0 +1,6 @@
+(let* square_sum (fn (x y z)
+                  (let* sum (+ x y z) diff (- sum 10)
+                    (* sum diff)))
+      other_sum  (fn (a b c)
+                   (let* product (* a b c) (sum (+ product -5))
+                     (square_sum a product sum))))

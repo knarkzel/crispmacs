@@ -1,11 +1,11 @@
 use crate::*;
 use nom::{
     branch::alt,
-    bytes::complete::{escaped, take_until},
-    character::complete::{alpha1, alphanumeric1, char, digit1, multispace0, one_of},
+    bytes::complete::{take, take_until},
+    character::complete::{alpha1, alphanumeric1, char, digit1, multispace0},
     combinator::{cut, map, map_res, opt},
     multi::{many0, many1},
-    sequence::{delimited, preceded, tuple},
+    sequence::{delimited, preceded, tuple, terminated},
     Parser,
 };
 use nom_supreme::{error::ErrorTree, final_parser::final_parser, tag::complete::tag, ParserExt};
@@ -98,24 +98,23 @@ fn parse_number(input: &str) -> IResult<&str, Atom> {
 
 fn parse_string(input: &str) -> IResult<&str, Atom> {
     map(
-        delimited(
-            tag("\""),
-            take_until("\""),
-            // escaped(
-                // alt((take_until("\""), take_until("\\"))),
-                // '\\',
-                // one_of("\"\\"),
-            // ),
-            tag("\""),
-        ),
+        delimited(tag("\""), cut(take_until("\"")).context("string"), tag("\"")),
         |it: &str| Atom::String(it.to_string()),
     )
+    .parse(input)
+}
+
+fn parse_char(input: &str) -> IResult<&str, Atom> {
+    map(delimited(tag("'"), cut(take(1usize)).context("char"), tag("'")), |it: &str| {
+        Atom::Char(it.chars().next().unwrap())
+    })
     .parse(input)
 }
 
 fn parse_atom(input: &str) -> IResult<&str, Atom> {
     alt((
         parse_string,
+        parse_char,
         parse_number,
         parse_boolean,
         parse_built_in,
@@ -148,27 +147,20 @@ fn parse_if(input: &str) -> IResult<&str, Expr> {
 }
 
 fn parse_quote(input: &str) -> IResult<&str, Expr> {
-    map(preceded(tag("'"), cut(sexp(many0(parse_expr)))), |exprs| {
+    let single = map(preceded(tag("'"), parse_expr), |expr| {
+        Expr::Quote(vec![expr])
+    });
+    let many = map(preceded(tag("'"), sexp(many0(parse_expr))), |exprs| {
         Expr::Quote(exprs)
-    })(input)
+    });
+    alt((single, many))(input)
 }
 
 fn parse_let(input: &str) -> IResult<&str, Expr> {
-    let define = sexp(map(
-        preceded(ws(tag("let")), tuple((parse_symbol, parse_expr))),
-        |(name, body)| Expr::Let(name, Box::new(body)),
-    ));
-    let lambda = sexp(map(
-        preceded(
-            ws(tag("let")),
-            tuple((
-                sexp(tuple((ws(parse_symbol), many0(ws(parse_symbol))))),
-                parse_expr,
-            )),
-        ),
-        |((name, args), body)| Expr::Let(name, Box::new(lambda(args, body))),
-    ));
-    alt((lambda, define))(input)
+    sexp(map(
+        preceded(ws(tag("let")), many1(tuple((parse_symbol, map(terminated(parse_expr, multispace0), Box::new))))),
+        |items| Expr::Let(items),
+    ))(input)
 }
 
 fn parse_function(input: &str) -> IResult<&str, Expr> {
@@ -185,11 +177,11 @@ fn parse_expr(input: &str) -> IResult<&str, Expr> {
     preceded(
         multispace0,
         alt((
+            parse_quote,
+            parse_constant,
             parse_if,
             parse_let,
             parse_function,
-            parse_quote,
-            parse_constant,
             parse_call,
         )),
     )(input)

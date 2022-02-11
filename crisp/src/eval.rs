@@ -103,9 +103,17 @@ impl Context {
                 None => bail!("Invalid variable: {symbol}"),
             },
             Expr::Constant(_) | Expr::Quote(_) => Ok(expr),
-            Expr::Let(Atom::Symbol(symbol), expr) => {
-                let expr = self.eval(*expr)?;
-                self.symbols.insert(symbol.clone(), expr);
+            Expr::Let(items) => {
+                for item in items {
+                    match item.0 {
+                        Atom::Symbol(name) => {
+                            let expr = self.eval(*item.1)?;
+                            self.symbols.insert(name, expr);                    
+                        }
+                        _ => bail!("Expected symbol, found following: {}", item.0),
+                    }
+
+                }
                 Ok(Expr::Nil)
             }
             Expr::If(predicate, then, otherwise) => {
@@ -145,9 +153,9 @@ impl Context {
                         BuiltIn::LessEqual => logic!(tail => a <= b),
                         BuiltIn::Plus => number_to_expr(numbers(&tail)?.sum()),
                         BuiltIn::Minus => match car(&tail).map(expr_to_number) {
-                            Some(Ok(car)) => {
-                                number_to_expr(numbers(cdr(&tail).unwrap_or_default())?.fold(car, |a, b| a - b))
-                            }
+                            Some(Ok(car)) => number_to_expr(
+                                numbers(cdr(&tail).unwrap_or_default())?.fold(car, |a, b| a - b),
+                            ),
                             _ => bail!("- expects one or more parameters, found {}", tail.len()),
                         },
                         BuiltIn::Times => number_to_expr(numbers(&tail)?.product()),
@@ -158,9 +166,9 @@ impl Context {
                         BuiltIn::And => boolean_to_expr(booleans(&tail)?.all(|it| it)),
                         BuiltIn::Or => boolean_to_expr(booleans(&tail)?.any(|it| it)),
                         BuiltIn::Divide => match car(&tail).map(expr_to_number) {
-                            Some(Ok(car)) => {
-                                number_to_expr(numbers(cdr(&tail).unwrap_or_default())?.fold(car, |a, b| a / b))
-                            }
+                            Some(Ok(car)) => number_to_expr(
+                                numbers(cdr(&tail).unwrap_or_default())?.fold(car, |a, b| a / b),
+                            ),
                             _ => bail!("/ expects 1 or more parameters, found {}", tail.len()),
                         },
                         BuiltIn::Not => match (tail.len() == 1, car(&tail)) {
