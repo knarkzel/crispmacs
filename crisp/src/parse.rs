@@ -5,7 +5,7 @@ use nom::{
     character::complete::{alpha1, alphanumeric1, char, digit1, multispace0},
     combinator::{cut, map, map_res, opt},
     multi::{many0, many1},
-    sequence::{delimited, preceded, tuple, terminated},
+    sequence::{delimited, preceded, tuple},
     Parser,
 };
 use nom_supreme::{error::ErrorTree, final_parser::final_parser, tag::complete::tag, ParserExt};
@@ -26,7 +26,7 @@ where
 
 fn ws<'a, F: 'a, O>(inner: F) -> impl FnMut(&'a str) -> IResult<&'a str, O>
 where
-    F: Fn(&'a str) -> IResult<&'a str, O>,
+    F: FnMut(&'a str) -> IResult<&'a str, O>,
 {
     delimited(multispace0, inner, multispace0)
 }
@@ -98,16 +98,21 @@ fn parse_number(input: &str) -> IResult<&str, Atom> {
 
 fn parse_string(input: &str) -> IResult<&str, Atom> {
     map(
-        delimited(tag("\""), cut(take_until("\"")).context("string"), tag("\"")),
+        delimited(
+            tag("\""),
+            cut(take_until("\"")).context("string"),
+            tag("\""),
+        ),
         |it: &str| Atom::String(it.to_string()),
     )
     .parse(input)
 }
 
 fn parse_char(input: &str) -> IResult<&str, Atom> {
-    map(delimited(tag("'"), cut(take(1usize)).context("char"), tag("'")), |it: &str| {
-        Atom::Char(it.chars().next().unwrap())
-    })
+    map(
+        delimited(tag("'"), cut(take(1usize)).context("char"), tag("'")),
+        |it: &str| Atom::Char(it.chars().next().unwrap()),
+    )
     .parse(input)
 }
 
@@ -157,8 +162,16 @@ fn parse_quote(input: &str) -> IResult<&str, Expr> {
 }
 
 fn parse_let(input: &str) -> IResult<&str, Expr> {
+    let regular = tuple((parse_symbol, map(parse_expr, Box::new)));
+    let lambda = map(
+        tuple((
+            sexp(tuple((ws(parse_symbol), many0(parse_symbol)))),
+            parse_expr,
+        )),
+        |((name, args), body)| (name, Box::new(lambda(args, body))),
+    );
     sexp(map(
-        preceded(ws(tag("let")), many1(tuple((parse_symbol, map(terminated(parse_expr, multispace0), Box::new))))),
+        preceded(ws(tag("let")), many1(ws(alt((lambda, regular))))),
         |items| Expr::Let(items),
     ))(input)
 }
@@ -174,19 +187,16 @@ fn parse_function(input: &str) -> IResult<&str, Expr> {
 }
 
 fn parse_expr(input: &str) -> IResult<&str, Expr> {
-    preceded(
-        multispace0,
-        alt((
-            parse_quote,
-            parse_constant,
-            parse_if,
-            parse_let,
-            parse_function,
-            parse_call,
-        )),
-    )(input)
+    ws(alt((
+        parse_quote,
+        parse_constant,
+        parse_if,
+        parse_let,
+        parse_function,
+        parse_call,
+    )))(input)
 }
 
 pub fn parse(input: &str) -> Result<Vec<Expr>, ErrorTree<&str>> {
-    final_parser(many1(delimited(multispace0, parse_expr, multispace0)))(input)
+    final_parser(many1(parse_expr))(input)
 }
