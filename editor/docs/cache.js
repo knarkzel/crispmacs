@@ -1,9 +1,9 @@
-var cacheName = 'egui-template-pwa';
+var cacheName = 'crispmacs';
 var filesToCache = [
   './',
   './index.html',
-  './eframe_template.js',
-  './eframe_template_bg.wasm',
+  './editor.js',
+  './editor_bg.wasm',
 ];
 
 /* Start the service worker and cache all of the app's content */
