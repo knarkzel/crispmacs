@@ -14,22 +14,24 @@ impl epi::App for Editor {
         Vec2::new(2560.0, 1440.0)
     }
 
-    fn update(&mut self, ctx: &CtxRef, _: &epi::Frame) {
+    fn setup(&mut self, ctx: &CtxRef, _: &epi::Frame, _: Option<&dyn epi::Storage>) {
         let mut fonts = FontDefinitions::default();
-
         fonts
             .family_and_size
             .insert(TextStyle::Monospace, (FontFamily::Proportional, 48.0));
-
         ctx.set_fonts(fonts);
+    }
 
+    fn update(&mut self, ctx: &CtxRef, _: &epi::Frame) {
         CentralPanel::default().show(ctx, |ui| {
-            ui.add_sized(
-                ui.available_size(),
-                TextEdit::multiline(&mut self.input)
-                    .code_editor()
-                    .frame(false),
-            );
+            ScrollArea::vertical().show(ui, |ui| {
+                ui.add(
+                    TextEdit::multiline(&mut self.input)
+                        .code_editor()
+                        .frame(false)
+                        .desired_width(f32::INFINITY),
+                );
+            })
         });
     }
 }
