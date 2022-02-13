@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<head>
+    <title>crispmacs</title>
+    <link rel="stylesheet" href="styles.css">
+    <script>
+        window.onload = () => {
+            'use strict';
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker
+                    .register('./cache.js');
+            }
+        }
+    </script>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div class="loading" id="loading">
+        Loading…&nbsp;&nbsp;
+        <div class="lds-dual-ring"></div>
+    </div>
+    <script>
+        delete WebAssembly.instantiateStreaming;
+    </script>
+    <script src="editor.js"></script>
+    <script>
+        wasm_bindgen("./editor_bg.wasm")
+            .then(on_wasm_loaded)
+            .catch(console.error);
+        function on_wasm_loaded() {
+            wasm_bindgen.start("canvas");
+            document.getElementById("loading").remove();
+        }
+    </script>
+</body>
+</html>
