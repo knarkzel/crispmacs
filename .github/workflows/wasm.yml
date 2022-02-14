@@ -22,7 +22,12 @@ jobs:
             toolchain: stable
             override: true
       - name: build docs
-        run: cd editor && ./scripts/setup_web.sh && ./scripts/build_web.sh
+        run: |
+          cd editor
+          ls
+          pwd
+          ./scripts/setup_web.sh
+          ./scripts/build_web.sh
       - name: Deploy to Github Pages
         uses: JamesIves/github-pages-deploy-action@4.1.9
         with:
