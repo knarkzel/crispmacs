@@ -58,7 +58,7 @@ wasm-bindgen "${TARGET}/wasm32-unknown-unknown/${BUILD}/${TARGET_NAME}" \
 if [[ "${FAST}" == false ]]; then
   echo "Optimizing wasm…"
   # to get wasm-opt:  apt/brew/dnf install binaryen
-  wasm-opt "docs/${CRATE_NAME}_bg.wasm" -O2 --fast-math -o "docs/${CRATE_NAME}_bg.wasm" # add -g to get debug symbols
+  wasm-opt "docs/${CRATE_NAME}_bg.wasm" -O2 -o "docs/${CRATE_NAME}_bg.wasm" # add -g to get debug symbols
 fi
 
 echo "Finished: docs/${CRATE_NAME_SNAKE_CASE}.wasm"

@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
-      - name: install dependencies
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get -y install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev jq binaryen
@@ -21,7 +21,7 @@ jobs:
             profile: minimal
             toolchain: stable
             override: true
-      - name: build docs
+      - name: Build docs
         run: |
           cd editor
           ./scripts/setup.sh
