@@ -15,11 +15,15 @@ impl epi::App for Editor {
     }
 
     fn setup(&mut self, ctx: &CtxRef, _: &epi::Frame, _: Option<&dyn epi::Storage>) {
+        // Proper font
         let mut fonts = FontDefinitions::default();
         fonts
             .family_and_size
             .insert(TextStyle::Monospace, (FontFamily::Proportional, 48.0));
         ctx.set_fonts(fonts);
+
+        // Light mode
+        ctx.set_visuals(Visuals::light());
     }
 
     fn update(&mut self, ctx: &CtxRef, _: &epi::Frame) {
@@ -29,6 +33,7 @@ impl epi::App for Editor {
                     TextEdit::multiline(&mut self.input)
                         .code_editor()
                         .frame(false)
+                        .desired_rows(usize::MAX)
                         .desired_width(f32::INFINITY),
                 );
             })

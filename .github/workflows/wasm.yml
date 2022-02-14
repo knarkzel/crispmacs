@@ -1,0 +1,27 @@
+name: wasm
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  wasm:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: install dependencies
+        run: apt-get -y install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev jq binaryen
+      - name: Install stable Rust
+        uses: actions-rs/toolchain@v1
+        with:
+            profile: minimal
+            override: true
+      - name: build docs
+        run: cd editor && ./scripts/setup_web.sh && ./scripts/build_web.sh
+      - name: Deploy to Github Pages
+        uses: JamesIves/github-pages-deploy-action@4.1.9
+        with:
+          branch: docs
+          folder: docs
