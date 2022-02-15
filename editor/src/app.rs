@@ -30,27 +30,37 @@ impl epi::App for Editor {
     }
 
     fn update(&mut self, ctx: &CtxRef, _: &epi::Frame) {
-        CentralPanel::default().show(ctx, |ui| {
+        TopBottomPanel::top("Menu").show(ctx, |ui| {
             if ui.button("Evaluate").clicked() {
                 match crisp::parse_and_eval(&self.input, &mut self.context) {
                     Ok(Ok(exprs)) => {
                         self.output = exprs
                             .into_iter()
-                            .map(|it| format!("{it}"))
+                            .enumerate()
+                            .filter(|(_, it)| *it != crisp::Expr::Nil)
+                            .map(|(i, it)| {
+                                if i == 0 {
+                                    format!("{it}")
+                                } else {
+                                    format!("{it}\n")
+                                }
+                            })
                             .collect::<String>()
                     }
                     Ok(Err(error)) => self.output = format!("Evaluation error: {error}"),
                     Err(error) => self.output = format!("Parsing error: {error}"),
-                    _ => {}
                 }
             }
-
+        });
+        CentralPanel::default().show(ctx, |ui| {
             if self.output.len() > 0 {
-                Window::new("Output").auto_sized().show(ctx, |ui| {
-                    ScrollArea::vertical().show(ui, |ui| {
-                        ui.label(&self.output);
-                    })
-                });
+                Window::new("Output")
+                    .auto_sized()
+                    .show(ctx, |ui| {
+                        ScrollArea::vertical().show(ui, |ui| {
+                            ui.label(&self.output);
+                        })
+                    });
             }
 
             ui.add(
