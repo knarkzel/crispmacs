@@ -5,47 +5,24 @@ of two parts: `crisp` and the `editor`.
 
 ## Crisp
 
-`crisp` is a Lisp that's based on Scheme that looks like Rust. It is currently
-very bare-bones. To try out the language, clone the project and run the
-repl:
+`crisp` is a programming language based on Lisp, but takes more inspiration
+from Rust (keywords for instance). For documentation, see [DOCS.md](./DOCS.md).
 
-### Examples
+## Editor
 
-Recursive functions:
+`crispmacs` works on the desktop and in the browser. You can try it in
+the browser here: [crispmacs](https://knarkzel.github.io/crispmacs/).
 
-```lisp
->> (let sum (fn (x) (if (> x 0) (+ x (sum (- x 1))) x)))
->> (sum 10)
-55
+For native, install following dependencies:
+
+```bash
+apt-get install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libspeechd-dev libxkbcommon-dev libssl-dev
 ```
 
-## Get started
+Then run following:
 
 ```bash
 git clone https://github.com/knarkzel/crispmacs
-cd crispmacs/
-```
-
-### Running REPL
-
-```bash
-cd repl/
+cd crispmacs/editor
 cargo run
-```
-
-### Running editor
-
-Dependencies: [egui](https://github.com/emilk/egui#demo).
-
-```bash
-cd editor
-cargo run
-```
-
-### Running editor in browser
-
-``` bash
-./scripts/setup_web.sh
-./scripts/build_web.sh
-./scripts/start_server.sh # open http://0.0.0.0:8080
 ```
