@@ -159,7 +159,7 @@ fn parse_let(input: &str) -> IResult<&str, Expr> {
     let regular = tuple((parse_symbol, map(parse_expr, Box::new)));
     let lambda = map(
         tuple((
-            sexp(tuple((ws(parse_symbol), many0(parse_symbol)))),
+            sexp(tuple((ws(parse_symbol), many0(ws(parse_symbol))))),
             parse_expr,
         )),
         |((name, args), body)| (name, Box::new(lambda(args, body))),
