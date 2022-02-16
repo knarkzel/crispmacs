@@ -8,8 +8,13 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-crisp = { path = "../crisp" }
 eframe = "0.16"
+crisp = { path = "../crisp" }
+
+[target.'cfg(linux)'.dependencies]
+syntect = "4.6"
+
+[target.'cfg(not(linux))'.dependencies]
 syntect = { version = "4.6", default-features = false, features = ["default-fancy"]}
 
 [profile.release]

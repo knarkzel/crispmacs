@@ -79,6 +79,7 @@ impl epi::App for Editor {
 
             ui.add(
                 TextEdit::multiline(&mut self.input)
+                    // .font(TextStyle::Monospace)
                     .code_editor()
                     .frame(false)
                     .desired_rows(30)
