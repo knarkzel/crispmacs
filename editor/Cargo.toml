@@ -10,6 +10,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 eframe = "0.16"
 crisp = { path = "../crisp" }
+syntect = "4.6.0"
 
 [profile.release]
 opt-level = 2

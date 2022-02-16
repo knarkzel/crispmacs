@@ -1,5 +1,6 @@
 use crisp::Context;
 use eframe::{egui::*, epi};
+use crate::highlight::highlight;
 
 #[derive(Default)]
 pub struct Editor {
@@ -38,7 +39,7 @@ impl epi::App for Editor {
                         Err(error) => self.output = format!("Parsing error: {error}"),
                     }
                 }
-                
+
                 if ui.button("Evaluate").clicked() {
                     match crisp::parse_and_eval(&self.input, &mut self.context) {
                         Ok(Ok(exprs)) => {
@@ -70,12 +71,19 @@ impl epi::App for Editor {
                 });
             }
 
+            let mut layouter = |ui: &Ui, input: &str, wrap_width: f32| {
+                let mut job = highlight(ui.ctx(), input, "lisp");
+                job.wrap_width = wrap_width;
+                ui.fonts().layout_job(job)
+            };
+
             ui.add(
                 TextEdit::multiline(&mut self.input)
                     .code_editor()
                     .frame(false)
                     .desired_rows(30)
-                    .desired_width(f32::INFINITY),
+                    .desired_width(f32::INFINITY)
+                    .layouter(&mut layouter),
             );
         });
     }

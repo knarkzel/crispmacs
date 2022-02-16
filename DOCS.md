@@ -2,7 +2,7 @@
 
 ## Introduction
 
-`crisp` is a programming language based on Lisp, but takes more inspiration
+`crisp` is a programming language based on Lisp that takes more inspiration
 from Rust (keywords for instance).
 
 ## Table of contents

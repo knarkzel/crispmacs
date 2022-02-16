@@ -5,7 +5,7 @@ of two parts: `crisp` and the `editor`.
 
 ## Crisp
 
-`crisp` is a programming language based on Lisp, but takes more inspiration
+`crisp` is a programming language based on Lisp that takes more inspiration
 from Rust (keywords for instance). For documentation, see [DOCS.md](./DOCS.md).
 
 ## Editor

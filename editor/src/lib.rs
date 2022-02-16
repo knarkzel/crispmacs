@@ -1,4 +1,5 @@
 mod app;
+pub mod highlight;
 pub use app::Editor;
 
 #[cfg(target_arch = "wasm32")]
