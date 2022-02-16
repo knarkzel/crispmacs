@@ -56,6 +56,7 @@ impl Highligher {
                     byte_range: as_byte_range(input, range),
                     format: TextFormat {
                         color: text_color,
+                        style: egui::TextStyle::Monospace,
                         italics,
                         underline,
                         ..Default::default()
