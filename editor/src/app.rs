@@ -1,6 +1,8 @@
+use crate::highlight::highlight;
 use crisp::Context;
 use eframe::{egui::*, epi};
-use crate::highlight::highlight;
+
+const FONT_SIZE: f32 = 44.0;
 
 #[derive(Default)]
 pub struct Editor {
@@ -22,7 +24,8 @@ impl epi::App for Editor {
         // Proper font
         let mut fonts = FontDefinitions::default();
         for font in fonts.family_and_size.iter_mut() {
-            *font.1 = (FontFamily::Proportional, 48.0);
+            let family = font.1.0;
+            *font.1 = (family, FONT_SIZE);
         }
         ctx.set_fonts(fonts);
 
@@ -33,6 +36,7 @@ impl epi::App for Editor {
     fn update(&mut self, ctx: &CtxRef, _: &epi::Frame) {
         TopBottomPanel::top("Menu").show(ctx, |ui| {
             ui.horizontal(|ui| {
+                ui.expand_to_include_y(FONT_SIZE + 20.0);
                 if ui.button("Parse").clicked() {
                     match crisp::parse(&self.input) {
                         Ok(exprs) => self.output = format!("{:#?}", exprs),
@@ -45,16 +49,10 @@ impl epi::App for Editor {
                         Ok(Ok(exprs)) => {
                             self.output = exprs
                                 .into_iter()
-                                .enumerate()
-                                .filter(|(_, it)| *it != crisp::Expr::Nil)
-                                .map(|(i, it)| {
-                                    if i == 0 {
-                                        format!("{it}")
-                                    } else {
-                                        format!("\n{it}")
-                                    }
-                                })
-                                .collect::<String>()
+                                .filter(|it| *it != crisp::Expr::Nil)
+                                .map(|it| format!("{it}"))
+                                .collect::<Vec<_>>()
+                                .join("\n")
                         }
                         Ok(Err(error)) => self.output = format!("Evaluation error: {error}"),
                         Err(error) => self.output = format!("Parsing error: {error}"),
@@ -79,7 +77,6 @@ impl epi::App for Editor {
 
             ui.add(
                 TextEdit::multiline(&mut self.input)
-                    // .font(TextStyle::Monospace)
                     .code_editor()
                     .frame(false)
                     .desired_rows(30)
