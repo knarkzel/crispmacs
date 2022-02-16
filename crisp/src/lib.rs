@@ -8,6 +8,7 @@ pub use eval::Context;
 pub use fehler::throws;
 pub use parse::parse;
 use std::fmt::Display;
+use num::bigint::BigInt;
 pub type Error = anyhow::Error;
 use beau_collector::BeauCollector as _;
 
@@ -52,7 +53,6 @@ impl Display for BuiltIn {
 pub enum Atom {
     Number(i32),
     Keyword(String),
-    Boolean(bool),
     BuiltIn(BuiltIn),
     Symbol(String),
     String(String),
@@ -64,13 +64,6 @@ impl Display for Atom {
         match self {
             Self::Number(number) => write!(f, "{}", number),
             Self::Keyword(keyword) => write!(f, ":{}", keyword),
-            Self::Boolean(boolean) => {
-                if *boolean {
-                    write!(f, "true")
-                } else {
-                    write!(f, "false")
-                }
-            }
             Self::BuiltIn(built_in) => write!(f, "{}", built_in),
             Self::Symbol(symbol) => write!(f, "{}", symbol),
             Self::String(string) => write!(f, "\"{}\"", string),

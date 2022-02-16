@@ -17,13 +17,17 @@ fn number_to_expr(number: i32) -> Expr {
 #[throws]
 fn expr_to_boolean(expr: &Expr) -> bool {
     match expr {
-        Expr::Constant(Atom::Boolean(it)) => *it,
-        _ => bail!("Invalid boolean passed: {expr}"),
+        Expr::Nil => false,
+        Expr::Quote(items) if items.len() == 0 => false,
+        _ => true,
     }
 }
 
 fn boolean_to_expr(boolean: bool) -> Expr {
-    Expr::Constant(Atom::Boolean(boolean))
+    match boolean {
+        false => Expr::Nil,
+        true => Expr::Constant(Atom::Symbol(String::from("T"))),
+    }
 }
 
 #[throws]
@@ -92,94 +96,113 @@ macro_rules! logic {
 // Context
 #[derive(Default)]
 pub struct Context {
-    symbols: HashMap<String, Expr>,
+    environment: HashMap<String, Expr>,
 }
 
 impl Context {
-    pub fn eval(&mut self, expr: Expr) -> Result<Expr, Error> {
-        match expr {
-            Expr::Constant(Atom::Symbol(symbol)) => match self.symbols.get(&symbol) {
-                Some(expr) => Ok(expr.clone()),
-                None => bail!("Invalid variable: {symbol}"),
-            },
-            Expr::Constant(_) | Expr::Quote(_) => Ok(expr),
-            Expr::Let(items) => {
-                for item in items {
-                    match item.0 {
-                        Atom::Symbol(name) => {
-                            let expr = self.eval(*item.1)?;
-                            self.symbols.insert(name, expr);                    
-                        }
-                        _ => bail!("Expected symbol, found following: {}", item.0),
-                    }
-
-                }
-                Ok(Expr::Nil)
-            }
-            Expr::If(predicate, then, otherwise) => {
-                let predicate = self.eval(*predicate)?;
-                if expr_to_boolean(&predicate)? {
-                    self.eval(*then)
-                } else if let Some(branch) = otherwise {
-                    self.eval(*branch)
-                } else {
-                    bail!("No branches of predicate ran: {predicate}")
-                }
-            }
-            Expr::Call(head, tail) => {
-                let head = self.eval(*head)?;
-                let tail = tail
-                    .into_iter()
-                    .map(|it| self.eval(it))
-                    .collect::<Result<Vec<_>, _>>()?;
-                match head {
-                    Expr::Function(args, expr) => {
-                        let mut marked = (0..args.len()).map(|_| false).collect::<Vec<_>>();
-                        let expr = curry(*expr, &args, &tail, &mut marked)?;
-                        let args = args
-                            .into_iter()
-                            .zip(marked.into_iter())
-                            .filter_map(|(it, marked)| if marked { None } else { Some(it) })
-                            .collect::<Vec<_>>();
-                        match args.len() == 0 {
-                            true => self.eval(expr),
-                            false => Ok(Expr::Function(args, Box::new(expr))),
+    pub fn eval(&mut self, mut expr: Expr) -> Result<Expr, Error> {
+        loop {
+            match expr {
+                Expr::Constant(Atom::Symbol(symbol)) => match self.environment.get(&symbol) {
+                    Some(expr) => return Ok(expr.clone()),
+                    None => bail!("Invalid variable: {symbol}"),
+                },
+                Expr::Constant(_) | Expr::Quote(_) => return Ok(expr),
+                Expr::Let(items) => {
+                    for item in items {
+                        match item.0 {
+                            Atom::Symbol(name) => {
+                                let expr = self.eval(*item.1)?;
+                                self.environment.insert(name, expr);
+                            }
+                            _ => bail!("Expected symbol, found following: {}", item.0),
                         }
                     }
-                    Expr::Constant(Atom::BuiltIn(built_in)) => Ok(match built_in {
-                        BuiltIn::Greater => logic!(tail => a > b),
-                        BuiltIn::Less => logic!(tail => a < b),
-                        BuiltIn::GreaterEqual => logic!(tail => a >= b),
-                        BuiltIn::LessEqual => logic!(tail => a <= b),
-                        BuiltIn::Plus => number_to_expr(numbers(&tail)?.sum()),
-                        BuiltIn::Minus => match car(&tail).map(expr_to_number) {
-                            Some(Ok(car)) => number_to_expr(
-                                numbers(cdr(&tail).unwrap_or_default())?.fold(car, |a, b| a - b),
-                            ),
-                            _ => bail!("- expects one or more parameters, found {}", tail.len()),
-                        },
-                        BuiltIn::Times => number_to_expr(numbers(&tail)?.product()),
-                        BuiltIn::Equal => boolean_to_expr(tail.windows(2).all(|it| it[0] == it[1])),
-                        BuiltIn::NotEqual => {
-                            boolean_to_expr(tail.windows(2).all(|it| it[0] != it[1]))
-                        }
-                        BuiltIn::And => boolean_to_expr(booleans(&tail)?.all(|it| it)),
-                        BuiltIn::Or => boolean_to_expr(booleans(&tail)?.any(|it| it)),
-                        BuiltIn::Divide => match car(&tail).map(expr_to_number) {
-                            Some(Ok(car)) => number_to_expr(
-                                numbers(cdr(&tail).unwrap_or_default())?.fold(car, |a, b| a / b),
-                            ),
-                            _ => bail!("/ expects 1 or more parameters, found {}", tail.len()),
-                        },
-                        BuiltIn::Not => match (tail.len() == 1, car(&tail)) {
-                            (true, Some(car)) => boolean_to_expr(!expr_to_boolean(car)?),
-                            _ => bail!("! expects 1 parameter, got {}", tail.len()),
-                        },
-                    }),
-                    it => Ok(it),
+                    return Ok(Expr::Nil);
                 }
+                Expr::If(predicate, then, otherwise) => {
+                    let predicate = self.eval(*predicate)?;
+                    if expr_to_boolean(&predicate)? {
+                        expr = *then;
+                        continue;
+                    } else if let Some(branch) = otherwise {
+                        expr = *branch;
+                        continue;
+                    } else {
+                        bail!("No branches of predicate ran: {predicate}")
+                    }
+                }
+                Expr::Call(head, tail) => {
+                    let head = self.eval(*head)?;
+                    let tail = tail
+                        .into_iter()
+                        .map(|it| self.eval(it))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    match head {
+                        Expr::Function(args, fexpr) => {
+                            let mut marked = (0..args.len()).map(|_| false).collect::<Vec<_>>();
+                            let body = curry(*fexpr, &args, &tail, &mut marked)?;
+                            let args = args
+                                .into_iter()
+                                .zip(marked.into_iter())
+                                .filter_map(|(it, marked)| if marked { None } else { Some(it) })
+                                .collect::<Vec<_>>();
+                            if args.len() == 0 {
+                                expr = body;
+                                continue;
+                            } else {
+                                return Ok(Expr::Function(args, Box::new(body)));
+                            }
+                        }
+                        Expr::Constant(Atom::BuiltIn(built_in)) => {
+                            return Ok(match built_in {
+                                BuiltIn::Greater => logic!(tail => a > b),
+                                BuiltIn::Less => logic!(tail => a < b),
+                                BuiltIn::GreaterEqual => logic!(tail => a >= b),
+                                BuiltIn::LessEqual => logic!(tail => a <= b),
+                                BuiltIn::Plus => number_to_expr(numbers(&tail)?.sum()),
+                                BuiltIn::Minus => match car(&tail).map(expr_to_number) {
+                                    Some(Ok(car)) => number_to_expr(
+                                        numbers(cdr(&tail).unwrap_or_default())?
+                                            .fold(car, |a, b| a - b),
+                                    ),
+                                    _ => {
+                                        bail!(
+                                            "- expects one or more parameters, found {}",
+                                            tail.len()
+                                        )
+                                    }
+                                },
+                                BuiltIn::Times => number_to_expr(numbers(&tail)?.product()),
+                                BuiltIn::Equal => {
+                                    boolean_to_expr(tail.windows(2).all(|it| it[0] == it[1]))
+                                }
+                                BuiltIn::NotEqual => {
+                                    boolean_to_expr(tail.windows(2).all(|it| it[0] != it[1]))
+                                }
+                                BuiltIn::And => boolean_to_expr(booleans(&tail)?.all(|it| it)),
+                                BuiltIn::Or => boolean_to_expr(booleans(&tail)?.any(|it| it)),
+                                BuiltIn::Divide => match car(&tail).map(expr_to_number) {
+                                    Some(Ok(car)) => number_to_expr(
+                                        numbers(cdr(&tail).unwrap_or_default())?
+                                            .fold(car, |a, b| a / b),
+                                    ),
+                                    _ => bail!(
+                                        "/ expects 1 or more parameters, found {}",
+                                        tail.len()
+                                    ),
+                                },
+                                BuiltIn::Not => match (tail.len() == 1, car(&tail)) {
+                                    (true, Some(car)) => boolean_to_expr(!expr_to_boolean(car)?),
+                                    _ => bail!("! expects 1 parameter, got {}", tail.len()),
+                                },
+                            })
+                        }
+                        it => return Ok(it),
+                    }
+                }
+                it => return Ok(it),
             }
-            it => Ok(it),
         }
     }
 }

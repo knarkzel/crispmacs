@@ -61,15 +61,6 @@ fn parse_built_in(input: &str) -> IResult<&str, Atom> {
     )(input)
 }
 
-fn parse_boolean(input: &str) -> IResult<&str, Atom> {
-    alt((
-        map(tag("true"), |_| Atom::Boolean(true)),
-        map(tag("false"), |_| Atom::Boolean(false)),
-    ))
-    .context("boolean")
-    .parse(input)
-}
-
 fn parse_keyword(input: &str) -> IResult<&str, Atom> {
     map(
         preceded(tag(":"), cut(alpha1)).context("keyword"),
@@ -121,11 +112,14 @@ fn parse_atom(input: &str) -> IResult<&str, Atom> {
         parse_string,
         parse_char,
         parse_number,
-        parse_boolean,
         parse_built_in,
         parse_keyword,
         parse_symbol,
     ))(input)
+}
+
+fn parse_nil(input: &str) -> IResult<&str, Expr> {
+    map(tag("nil"), |_| Expr::Nil)(input)
 }
 
 fn parse_constant(input: &str) -> IResult<&str, Expr> {
@@ -189,6 +183,7 @@ fn parse_function(input: &str) -> IResult<&str, Expr> {
 fn parse_expr(input: &str) -> IResult<&str, Expr> {
     ws(alt((
         parse_quote,
+        parse_nil,
         parse_constant,
         parse_if,
         parse_let,

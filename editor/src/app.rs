@@ -49,7 +49,6 @@ impl epi::App for Editor {
                         Ok(Ok(exprs)) => {
                             self.output = exprs
                                 .into_iter()
-                                .filter(|it| *it != crisp::Expr::Nil)
                                 .map(|it| format!("{it}"))
                                 .collect::<Vec<_>>()
                                 .join("\n")
