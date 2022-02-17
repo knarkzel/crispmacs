@@ -2,10 +2,10 @@ use crate::*;
 use nom::{
     branch::alt,
     bytes::complete::{take, take_until},
-    character::complete::{alpha1, alphanumeric1, char, digit1, multispace0},
-    combinator::{cut, map, map_res, opt},
+    character::complete::{alpha1, alphanumeric1, char, digit1, multispace0, one_of},
+    combinator::{cut, map, map_res, opt, recognize},
     multi::{many0, many1},
-    sequence::{delimited, preceded, tuple},
+    sequence::{delimited, pair, preceded, tuple},
     Parser,
 };
 use nom_supreme::{error::ErrorTree, final_parser::final_parser, tag::complete::tag, ParserExt};
@@ -69,9 +69,18 @@ fn parse_keyword(input: &str) -> IResult<&str, Atom> {
 }
 
 fn parse_symbol(input: &str) -> IResult<&str, Atom> {
-    map(alphanumeric1, |symbol: &str| {
-        Atom::Symbol(symbol.to_string())
-    })(input)
+    let identifier = recognize(pair(
+        alpha1,
+        many0(alt((
+            alphanumeric1,
+            tag("_"),
+            tag("-"),
+            tag(">"),
+            tag("<"),
+            tag("?"),
+        ))),
+    ));
+    map(identifier, |symbol: &str| Atom::Symbol(symbol.to_string()))(input)
 }
 
 fn parse_number(input: &str) -> IResult<&str, Atom> {
@@ -85,6 +94,13 @@ fn parse_number(input: &str) -> IResult<&str, Atom> {
     ))
     .context("number")
     .parse(input)
+}
+
+fn parse_float(input: &str) -> IResult<&str, Atom> {
+    map_res(
+        recognize(tuple((parse_number, char('.'), parse_number))),
+        |float| float.parse::<f64>().map(Atom::Float),
+    )(input)
 }
 
 fn parse_string(input: &str) -> IResult<&str, Atom> {
@@ -111,6 +127,7 @@ fn parse_atom(input: &str) -> IResult<&str, Atom> {
     alt((
         parse_string,
         parse_char,
+        parse_float,
         parse_number,
         parse_built_in,
         parse_keyword,

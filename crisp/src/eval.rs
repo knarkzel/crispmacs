@@ -10,8 +10,20 @@ fn expr_to_number(expr: &Expr) -> BigInt {
     }
 }
 
+#[throws]
+fn expr_to_float(expr: &Expr) -> f64 {
+    match expr {
+        Expr::Constant(Atom::Float(it)) => *it,
+        _ => bail!("Invalid float passed: {}", expr),
+    }
+}
+
 fn number_to_expr(number: BigInt) -> Expr {
     Expr::Constant(Atom::Number(number))
+}
+
+fn float_to_expr(float: f64) -> Expr {
+    Expr::Constant(Atom::Float(float))
 }
 
 #[throws]
@@ -34,6 +46,14 @@ fn boolean_to_expr(boolean: bool) -> Expr {
 fn numbers(tail: &[Expr]) -> impl Iterator<Item = BigInt> {
     tail.iter()
         .map(expr_to_number)
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+}
+
+#[throws]
+fn floats(tail: &[Expr]) -> impl Iterator<Item = f64> {
+    tail.iter()
+        .map(expr_to_float)
         .collect::<Result<Vec<_>, _>>()?
         .into_iter()
 }
@@ -86,6 +106,9 @@ macro_rules! logic {
 	($tail:ident => $a:ident $op:tt $b:ident) => {
 		boolean_to_expr($tail.windows(2).all(|it| match (&it[0], &it[1]) {
             (Expr::Constant(Atom::Number($a)), Expr::Constant(Atom::Number($b))) => {
+                $a $op $b
+            }
+            (Expr::Constant(Atom::Float($a)), Expr::Constant(Atom::Float($b))) => {
                 $a $op $b
             }
             _ => false,
@@ -141,7 +164,11 @@ impl Context {
                     match head {
                         Expr::Function(args, fexpr) => {
                             if tail.len() > args.len() {
-                                bail!("Expected maximum {} arguments, got {}", args.len(), tail.len())
+                                bail!(
+                                    "Expected maximum {} arguments, got {}",
+                                    args.len(),
+                                    tail.len()
+                                )
                             }
                             let mut marked = (0..args.len()).map(|_| false).collect::<Vec<_>>();
                             let body = curry(*fexpr, &args, &tail, &mut marked)?;
@@ -163,20 +190,41 @@ impl Context {
                                 BuiltIn::Less => logic!(tail => a < b),
                                 BuiltIn::GreaterEqual => logic!(tail => a >= b),
                                 BuiltIn::LessEqual => logic!(tail => a <= b),
-                                BuiltIn::Plus => number_to_expr(numbers(&tail)?.sum()),
-                                BuiltIn::Minus => match car(&tail).map(expr_to_number) {
-                                    Some(Ok(car)) => number_to_expr(
-                                        numbers(cdr(&tail).unwrap_or_default())?
-                                            .fold(car, |a, b| a - b),
-                                    ),
-                                    _ => {
+                                BuiltIn::Plus => {
+                                    if let Ok(floats) = floats(&tail) {
+                                        float_to_expr(floats.sum())
+                                    } else if let Ok(numbers) = numbers(&tail) {
+                                        number_to_expr(numbers.sum())
+                                    } else {
+                                        bail!("+ expects number(s) or float(s), found none")
+                                    }
+                                }
+                                BuiltIn::Minus => {
+                                    if let Some(Ok(car)) = car(&tail).map(expr_to_float) {
+                                        float_to_expr(
+                                            floats(cdr(&tail).unwrap_or_default())?
+                                                .fold(car, |a, b| a - b),
+                                        )
+                                    } else if let Some(Ok(car)) = car(&tail).map(expr_to_number) {
+                                        number_to_expr(
+                                            numbers(cdr(&tail).unwrap_or_default())?
+                                                .fold(car, |a, b| a - b),
+                                        )
+                                    } else {
                                         bail!(
-                                            "- expects one or more parameters, found {}",
-                                            tail.len()
+                                            "- expects 1 or more number(s) or float(s), found none"
                                         )
                                     }
-                                },
-                                BuiltIn::Times => number_to_expr(numbers(&tail)?.product()),
+                                }
+                                BuiltIn::Times => {
+                                    if let Ok(floats) = floats(&tail) {
+                                        float_to_expr(floats.product())
+                                    } else if let Ok(numbers) = numbers(&tail) {
+                                        number_to_expr(numbers.product())
+                                    } else {
+                                        bail!("* expects number(s) or float(s), found none")
+                                    }
+                                }
                                 BuiltIn::Equal => {
                                     boolean_to_expr(tail.windows(2).all(|it| it[0] == it[1]))
                                 }
@@ -185,21 +233,28 @@ impl Context {
                                 }
                                 BuiltIn::And => boolean_to_expr(booleans(&tail)?.all(|it| it)),
                                 BuiltIn::Or => boolean_to_expr(booleans(&tail)?.any(|it| it)),
-                                BuiltIn::Divide => match car(&tail).map(expr_to_number) {
-                                    Some(Ok(car)) => number_to_expr(
-                                        numbers(cdr(&tail).unwrap_or_default())?
-                                            .fold(car, |a, b| a / b),
-                                    ),
-                                    _ => bail!(
-                                        "/ expects 1 or more parameters, found {}",
-                                        tail.len()
-                                    ),
-                                },
+                                BuiltIn::Divide => {
+                                    if let Some(Ok(car)) = car(&tail).map(expr_to_float) {
+                                        float_to_expr(
+                                            floats(cdr(&tail).unwrap_or_default())?
+                                                .fold(car, |a, b| a / b),
+                                        )
+                                    } else if let Some(Ok(car)) = car(&tail).map(expr_to_number) {
+                                        number_to_expr(
+                                            numbers(cdr(&tail).unwrap_or_default())?
+                                                .fold(car, |a, b| a / b),
+                                        )
+                                    } else {
+                                        bail!(
+                                            "/ expects 1 or more number(s) or float(s), found none"
+                                        )
+                                    }
+                                }
                                 BuiltIn::Not => match (tail.len() == 1, car(&tail)) {
                                     (true, Some(car)) => boolean_to_expr(!expr_to_boolean(car)?),
                                     _ => bail!("! expects 1 parameter, got {}", tail.len()),
                                 },
-                            })
+                            });
                         }
                         it => return Ok(it),
                     }

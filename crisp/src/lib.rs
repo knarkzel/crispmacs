@@ -52,6 +52,7 @@ impl Display for BuiltIn {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Atom {
     Number(BigInt),
+    Float(f64),
     Keyword(String),
     BuiltIn(BuiltIn),
     Symbol(String),
@@ -63,6 +64,7 @@ impl Display for Atom {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Number(number) => write!(f, "{number}"),
+            Self::Float(float) => write!(f, "{float}"),
             Self::Keyword(keyword) => write!(f, ":{keyword}"),
             Self::BuiltIn(built_in) => write!(f, "{built_in}"),
             Self::Symbol(symbol) => write!(f, "{symbol}"),
