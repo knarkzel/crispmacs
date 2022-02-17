@@ -140,6 +140,9 @@ impl Context {
                         .collect::<Result<Vec<_>, _>>()?;
                     match head {
                         Expr::Function(args, fexpr) => {
+                            if tail.len() > args.len() {
+                                bail!("Expected maximum {} arguments, got {}", args.len(), tail.len())
+                            }
                             let mut marked = (0..args.len()).map(|_| false).collect::<Vec<_>>();
                             let body = curry(*fexpr, &args, &tail, &mut marked)?;
                             let args = args

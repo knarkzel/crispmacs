@@ -55,10 +55,10 @@ nil
 15
 ```
 
-Functions can also be recursive:
+Functions can also be recursive (tail-call optimization is implemented):
 
 ```lisp
->> (let (sum x) (if (> x 0) (+ x (sum (- x 1))) x))
+>> (let (sum x acc) (if (> x 0) (+ x (sum (- x 1))) x))
 nil
 >> (sum 10)
 55

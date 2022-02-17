@@ -62,12 +62,12 @@ pub enum Atom {
 impl Display for Atom {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Number(number) => write!(f, "{}", number),
-            Self::Keyword(keyword) => write!(f, ":{}", keyword),
-            Self::BuiltIn(built_in) => write!(f, "{}", built_in),
-            Self::Symbol(symbol) => write!(f, "{}", symbol),
-            Self::String(string) => write!(f, "\"{}\"", string),
-            Self::Char(letter) => write!(f, "'{}'", letter),
+            Self::Number(number) => write!(f, "{number}"),
+            Self::Keyword(keyword) => write!(f, ":{keyword}"),
+            Self::BuiltIn(built_in) => write!(f, "{built_in}"),
+            Self::Symbol(symbol) => write!(f, "{symbol}"),
+            Self::String(string) => write!(f, "\"{string}\""),
+            Self::Char(letter) => write!(f, "'{letter}'"),
         }
     }
 }
@@ -93,16 +93,19 @@ pub enum Expr {
 impl Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Constant(atom) => write!(f, "{}", atom),
+            Self::Constant(atom) => write!(f, "{atom}"),
             Self::Call(head, tail) => {
-                write!(f, "({}", head)?;
+                write!(f, "({head}")?;
                 for expr in tail {
-                    write!(f, " {}", expr)?;
+                    write!(f, " {expr}")?;
                 }
                 write!(f, ")")
             }
             Self::If(predicate, then, otherwise) => {
-                write!(f, "(if {} {} {:?})", predicate, then, otherwise)
+                match otherwise {
+                    Some(it) => write!(f, "(if {predicate} {then} {it})"),
+                    None => write!(f, "(if {predicate} {then})")
+                }
             }
             Self::Quote(expr) => match expr.len() {
                 0 => write!(f, ""),
@@ -113,7 +116,7 @@ impl Display for Expr {
                         if i > 0 {
                             write!(f, " ")?;
                         }
-                        write!(f, "{}", expr)?;
+                        write!(f, "{expr}")?;
                     }
                     write!(f, ")")
                 }
@@ -134,9 +137,9 @@ impl Display for Expr {
                     if i > 0 {
                         write!(f, " ")?;
                     }
-                    write!(f, "{}", expr)?;
+                    write!(f, "{expr}")?;
                 }
-                write!(f, ") {})", body)
+                write!(f, ") {body})")
             }
             Self::Nil => write!(f, "nil"),
         }
