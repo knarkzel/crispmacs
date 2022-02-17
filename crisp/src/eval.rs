@@ -63,11 +63,11 @@ fn curry(expr: Expr, left: &[Expr], right: &[Expr], marked: &mut [bool]) -> Expr
     let mut single = |expr| -> Result<Expr, Error> { curry(expr, left, right, marked) };
     match expr {
         // Handle variable
-        symbol if let Some(index) = left.iter().position(|it| *it == symbol) => {
+        symbol if let Some(index) = left[..right.len()].iter().position(|it| *it == symbol) => {
             marked[index] = true;
             match right.get(index) {
                 Some(parameter) => parameter.clone(),
-                None => bail!("Index out of bounds"),
+                None => symbol,
             }
         },
         // Handle other forms

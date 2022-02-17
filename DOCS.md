@@ -30,7 +30,9 @@ from Rust (keywords for instance).
 
 ```lisp
 >> (let x 10)
+nil
 >> (let y 15)
+nil
 >> (+ x y)
 25
 ```
@@ -39,6 +41,7 @@ from Rust (keywords for instance).
 
 ```lisp
 >> (let triple (fn (x) (* x 3)))
+nil
 >> (triple 5)
 15
 ```
@@ -47,6 +50,7 @@ Above can also be written like so:
 
 ```lisp
 >> (let (triple x) (* x 3))
+nil
 >> (triple 5)
 15
 ```
@@ -55,6 +59,7 @@ Functions can also be recursive:
 
 ```lisp
 >> (let (sum x) (if (> x 0) (+ x (sum (- x 1))) x))
+nil
 >> (sum 10)
 55
 ```

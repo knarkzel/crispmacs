@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.53"
-beau_collector = "0.2.1"
-fehler = "1.0.0"
 nom = "7.1.0"
-nom-supreme = "0.6.0"
 num = "0.4.0"
+fehler = "1.0.0"
+anyhow = "1.0.53"
+nom-supreme = "0.6.0"
+beau_collector = "0.2.1"
