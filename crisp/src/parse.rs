@@ -1,11 +1,11 @@
 use crate::*;
 use nom::{
     branch::alt,
-    bytes::complete::{is_not, take, take_until},
+    bytes::complete::{take, take_until},
     character::complete::{alpha1, alphanumeric1, char, digit1, multispace0},
-    combinator::{cut, map, map_res, opt, value},
+    combinator::{cut, map, map_res, opt},
     multi::{many0, many1},
-    sequence::{delimited, pair, preceded, tuple},
+    sequence::{delimited, preceded, tuple},
     Parser,
 };
 use nom_supreme::{error::ErrorTree, final_parser::final_parser, tag::complete::tag, ParserExt};
@@ -77,10 +77,10 @@ fn parse_symbol(input: &str) -> IResult<&str, Atom> {
 fn parse_number(input: &str) -> IResult<&str, Atom> {
     alt((
         map_res(digit1, |digits: &str| {
-            digits.parse::<i32>().map(Atom::Number)
+            digits.parse::<BigInt>().map(Atom::Number)
         }),
         map_res(preceded(tag("-"), digit1), |digits: &str| {
-            digits.parse::<i32>().map(|it| Atom::Number(it * -1))
+            digits.parse::<BigInt>().map(|it| Atom::Number(it * -1))
         }),
     ))
     .context("number")
@@ -191,7 +191,6 @@ fn parse_expr(input: &str) -> IResult<&str, Expr> {
         parse_call,
     )))(input)
 }
-
 
 pub fn parse(input: &str) -> Result<Vec<Expr>, ErrorTree<&str>> {
     final_parser(many1(parse_expr))(&input)

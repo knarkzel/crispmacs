@@ -51,7 +51,7 @@ impl Display for BuiltIn {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Atom {
-    Number(i32),
+    Number(BigInt),
     Keyword(String),
     BuiltIn(BuiltIn),
     Symbol(String),

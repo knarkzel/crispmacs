@@ -3,14 +3,14 @@ use std::collections::HashMap;
 
 // Eval helpers
 #[throws]
-fn expr_to_number(expr: &Expr) -> i32 {
+fn expr_to_number(expr: &Expr) -> BigInt {
     match expr {
-        Expr::Constant(Atom::Number(it)) => *it,
+        Expr::Constant(Atom::Number(it)) => it.clone(),
         _ => bail!("Invalid number passed: {}", expr),
     }
 }
 
-fn number_to_expr(number: i32) -> Expr {
+fn number_to_expr(number: BigInt) -> Expr {
     Expr::Constant(Atom::Number(number))
 }
 
@@ -31,7 +31,7 @@ fn boolean_to_expr(boolean: bool) -> Expr {
 }
 
 #[throws]
-fn numbers(tail: &[Expr]) -> impl Iterator<Item = i32> {
+fn numbers(tail: &[Expr]) -> impl Iterator<Item = BigInt> {
     tail.iter()
         .map(expr_to_number)
         .collect::<Result<Vec<_>, _>>()?
