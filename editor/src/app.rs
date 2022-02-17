@@ -4,11 +4,29 @@ use eframe::{egui::*, epi};
 
 const FONT_SIZE: f32 = 44.0;
 
+fn strip_comment(input: &str) -> &str {
+    input
+        .find(";")
+        .map(|it| &input[..it])
+        .unwrap_or(input)
+        .trim()
+}
+
+fn sanitize(input: &str) -> String {
+    input.lines().map(strip_comment).collect::<Vec<_>>().join("\n")    
+}
+
 #[derive(Default)]
 pub struct Editor {
     input: String,
     context: Context,
     output: String,
+}
+
+impl Editor {
+    fn input(&self) -> String {
+        sanitize(&self.input)
+    }
 }
 
 impl epi::App for Editor {
@@ -38,14 +56,14 @@ impl epi::App for Editor {
             ui.horizontal(|ui| {
                 ui.expand_to_include_y(FONT_SIZE + 20.0);
                 if ui.button("Parse").clicked() {
-                    match crisp::parse(&self.input) {
+                    match crisp::parse(&self.input()) {
                         Ok(exprs) => self.output = format!("{:#?}", exprs),
                         Err(error) => self.output = format!("Parsing error: {error}"),
                     }
                 }
 
                 if ui.button("Evaluate").clicked() {
-                    match crisp::parse_and_eval(&self.input, &mut self.context) {
+                    match crisp::parse_and_eval(&self.input(), &mut self.context) {
                         Ok(Ok(exprs)) => {
                             self.output = exprs
                                 .into_iter()

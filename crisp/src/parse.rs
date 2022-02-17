@@ -1,11 +1,11 @@
 use crate::*;
 use nom::{
     branch::alt,
-    bytes::complete::{take, take_until},
+    bytes::complete::{is_not, take, take_until},
     character::complete::{alpha1, alphanumeric1, char, digit1, multispace0},
-    combinator::{cut, map, map_res, opt},
+    combinator::{cut, map, map_res, opt, value},
     multi::{many0, many1},
-    sequence::{delimited, preceded, tuple},
+    sequence::{delimited, pair, preceded, tuple},
     Parser,
 };
 use nom_supreme::{error::ErrorTree, final_parser::final_parser, tag::complete::tag, ParserExt};
@@ -192,6 +192,7 @@ fn parse_expr(input: &str) -> IResult<&str, Expr> {
     )))(input)
 }
 
+
 pub fn parse(input: &str) -> Result<Vec<Expr>, ErrorTree<&str>> {
-    final_parser(many1(parse_expr))(input)
+    final_parser(many1(parse_expr))(&input)
 }
