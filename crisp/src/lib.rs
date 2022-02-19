@@ -2,6 +2,7 @@
 
 mod eval;
 mod parse;
+mod core;
 
 use anyhow::bail;
 pub use eval::Context;

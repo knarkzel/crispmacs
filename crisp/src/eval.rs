@@ -128,7 +128,7 @@ impl Context {
             match expr {
                 Expr::Constant(Atom::Symbol(symbol)) => match self.environment.get(&symbol) {
                     Some(expr) => return Ok(expr.clone()),
-                    None => bail!("Invalid variable: {symbol}"),
+                    None => bail!("Invalid variable or function: {symbol}"),
                 },
                 Expr::Constant(_) | Expr::Quote(_) => return Ok(expr),
                 Expr::Let(items) => {
@@ -156,11 +156,17 @@ impl Context {
                     }
                 }
                 Expr::Call(head, tail) => {
-                    let head = self.eval(*head)?;
                     let tail = tail
                         .into_iter()
                         .map(|it| self.eval(it))
                         .collect::<Result<Vec<_>, _>>()?;
+                    
+                    // Try in-built functions, otherwise proceed
+                    if let Ok(expr) = core::std(&head, &tail) {
+                        return Ok(expr);
+                    }
+                    let head = self.eval(*head)?;
+                    
                     match head {
                         Expr::Function(args, fexpr) => {
                             if tail.len() > args.len() {
@@ -256,6 +262,7 @@ impl Context {
                                 },
                             });
                         }
+                        // In-built functions on data types
                         it => return Ok(it),
                     }
                 }

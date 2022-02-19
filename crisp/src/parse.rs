@@ -2,7 +2,7 @@ use crate::*;
 use nom::{
     branch::alt,
     bytes::complete::{take, take_until},
-    character::complete::{alpha1, alphanumeric1, char, digit1, multispace0, one_of},
+    character::complete::{alpha1, alphanumeric1, char, digit1, multispace0},
     combinator::{cut, map, map_res, opt, recognize},
     multi::{many0, many1},
     sequence::{delimited, pair, preceded, tuple},
@@ -169,7 +169,7 @@ fn parse_quote(input: &str) -> IResult<&str, Expr> {
     let many = map(preceded(tag("'"), sexp(many0(parse_expr))), |exprs| {
         Expr::Quote(exprs)
     });
-    alt((single, many))(input)
+    alt((many, single))(input)
 }
 
 fn parse_let(input: &str) -> IResult<&str, Expr> {
