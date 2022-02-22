@@ -58,8 +58,8 @@ nil
 Functions can also be recursive (tail-call optimization is implemented):
 
 ```lisp
->> (let (sum x acc) (if (> x 0) (+ x (sum (- x 1))) x))
+>> (let (sum x acc) (if (> x 0) (sum (- x 1) (+ acc x)) acc))
 nil
->> (sum 10)
+>> (sum 10 0)
 55
 ```
